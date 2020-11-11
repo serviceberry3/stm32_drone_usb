@@ -160,8 +160,7 @@ int crtpReceivePacketBlock(CRTPPort taskId, CRTPPacket *p);
  * Function pointer structure to be filled by the CRTP link to permits CRTP to
  * use manu link
  */
-struct crtpLinkOperations
-{
+struct crtpLinkOperations {
   int (*setEnable)(bool enable);
   int (*sendPacket)(CRTPPacket *pk);
   int (*receivePacket)(CRTPPacket *pk);

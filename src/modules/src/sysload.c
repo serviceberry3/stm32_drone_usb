@@ -58,7 +58,7 @@ static StaticTimer_t timerBuffer;
 void sysLoadInit() {
   ASSERT(!initialized);
 
-  xTimerHandle timer = xTimerCreateStatic( "sysLoadMonitorTimer", TIMER_PERIOD, pdTRUE, NULL, timerHandler, &timerBuffer);
+  xTimerHandle timer = xTimerCreateStatic("sysLoadMonitorTimer", TIMER_PERIOD, pdTRUE, NULL, timerHandler, &timerBuffer);
   xTimerStart(timer, 100);
 
   initialized = true;

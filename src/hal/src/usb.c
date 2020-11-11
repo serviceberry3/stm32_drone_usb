@@ -160,8 +160,7 @@ static void resetUSB(void) {
   USB_OTG_FlushTxFifo(&USB_OTG_dev, IN_EP);
 }
 
-static uint8_t usbd_cf_Setup(void *pdev , USB_SETUP_REQ  *req)
-{
+static uint8_t usbd_cf_Setup(void *pdev , USB_SETUP_REQ  *req) {
   command = req->wIndex;
   if (command == 0x01) {
     crtpSetLink(usblinkGetLink());
@@ -335,8 +334,7 @@ void USBD_USR_DeviceConfigured(void)
 * @param  None
 * @retval None
 */
-void USBD_USR_DeviceSuspended(void)
-{
+void USBD_USR_DeviceSuspended(void) {
   /* USB communication suspended (probably USB unplugged). Switch back to radiolink */
   resetUSB();
 }
@@ -347,8 +345,7 @@ void USBD_USR_DeviceSuspended(void)
 * @param  None
 * @retval None
 */
-void USBD_USR_DeviceResumed(void)
-{
+void USBD_USR_DeviceResumed(void) {
 }
 
 
@@ -357,8 +354,7 @@ void USBD_USR_DeviceResumed(void)
 * @param  None
 * @retval Staus
 */
-void USBD_USR_DeviceConnected(void)
-{
+void USBD_USR_DeviceConnected(void) {
 }
 
 
@@ -367,13 +363,11 @@ void USBD_USR_DeviceConnected(void)
 * @param  None
 * @retval Staus
 */
-void USBD_USR_DeviceDisconnected(void)
-{
+void USBD_USR_DeviceDisconnected(void) {
   resetUSB();
 }
 
-void usbInit(void)
-{
+void usbInit(void) {
   USBD_Init(&USB_OTG_dev,
             USB_OTG_FS_CORE_ID,
             &USR_desc,
@@ -388,13 +382,11 @@ void usbInit(void)
   isInit = true;
 }
 
-bool usbTest(void)
-{
+bool usbTest(void) {
   return isInit;
 }
 
-bool usbGetDataBlocking(USBPacket *in)
-{
+bool usbGetDataBlocking(USBPacket *in) {
   while (xQueueReceive(usbDataRx, in, portMAX_DELAY) != pdTRUE)
     ; // Don't return until we get some data on the USB
   return true;
@@ -402,8 +394,7 @@ bool usbGetDataBlocking(USBPacket *in)
 
 static USBPacket outStage;
 
-bool usbSendData(uint32_t size, uint8_t* data)
-{
+bool usbSendData(uint32_t size, uint8_t* data) {
   outStage.size = size;
   memcpy(outStage.data, data, size);
   // Dont' block when sending

@@ -83,9 +83,8 @@ static void updateStats();
 STATIC_MEM_TASK_ALLOC_STACK_NO_DMA_CCM_SAFE(crtpTxTask, CRTP_TX_TASK_STACKSIZE);
 STATIC_MEM_TASK_ALLOC_STACK_NO_DMA_CCM_SAFE(crtpRxTask, CRTP_RX_TASK_STACKSIZE);
 
-void crtpInit(void)
-{
-  if(isInit)
+void crtpInit(void) {
+  if (isInit)
     return;
 
   txQueue = xQueueCreate(CRTP_TX_QUEUE_SIZE, sizeof(CRTPPacket));
@@ -97,29 +96,25 @@ void crtpInit(void)
   isInit = true;
 }
 
-bool crtpTest(void)
-{
+bool crtpTest(void) {
   return isInit;
 }
 
-void crtpInitTaskQueue(CRTPPort portId)
-{
+void crtpInitTaskQueue(CRTPPort portId) {
   ASSERT(queues[portId] == NULL);
 
   queues[portId] = xQueueCreate(CRTP_RX_QUEUE_SIZE, sizeof(CRTPPacket));
   DEBUG_QUEUE_MONITOR_REGISTER(queues[portId]);
 }
 
-int crtpReceivePacket(CRTPPort portId, CRTPPacket *p)
-{
+int crtpReceivePacket(CRTPPort portId, CRTPPacket *p) {
   ASSERT(queues[portId]);
   ASSERT(p);
 
   return xQueueReceive(queues[portId], p, 0);
 }
 
-int crtpReceivePacketBlock(CRTPPort portId, CRTPPacket *p)
-{
+int crtpReceivePacketBlock(CRTPPort portId, CRTPPacket *p) {
   ASSERT(queues[portId]);
   ASSERT(p);
 
@@ -127,107 +122,85 @@ int crtpReceivePacketBlock(CRTPPort portId, CRTPPacket *p)
 }
 
 
-int crtpReceivePacketWait(CRTPPort portId, CRTPPacket *p, int wait)
-{
+int crtpReceivePacketWait(CRTPPort portId, CRTPPacket *p, int wait) {
   ASSERT(queues[portId]);
   ASSERT(p);
 
   return xQueueReceive(queues[portId], p, M2T(wait));
 }
 
-int crtpGetFreeTxQueuePackets(void)
-{
+int crtpGetFreeTxQueuePackets(void) {
   return (CRTP_TX_QUEUE_SIZE - uxQueueMessagesWaiting(txQueue));
 }
 
-void crtpTxTask(void *param)
-{
+void crtpTxTask(void *param) {
   CRTPPacket p;
 
-  while (true)
-  {
-    if (link != &nopLink)
-    {
-      if (xQueueReceive(txQueue, &p, portMAX_DELAY) == pdTRUE)
-      {
+  while (true) {
+    if (link != &nopLink) {
+      if (xQueueReceive(txQueue, &p, portMAX_DELAY) == pdTRUE) {
         // Keep testing, if the link changes to USB it will go though
-        while (link->sendPacket(&p) == false)
-        {
+        while (link->sendPacket(&p) == false) {
           // Relaxation time
           vTaskDelay(M2T(10));
         }
         stats.txCount++;
         updateStats();
       }
-    }
-    else
-    {
+    } else {
       vTaskDelay(M2T(10));
     }
   }
 }
 
-void crtpRxTask(void *param)
-{
+void crtpRxTask(void *param) {
   CRTPPacket p;
 
-  while (true)
-  {
-    if (link != &nopLink)
-    {
-      if (!link->receivePacket(&p))
-      {
-        if (queues[p.port])
-        {
-          if (xQueueSend(queues[p.port], &p, 0) == errQUEUE_FULL)
-          {
+  while (true) {
+    if (link != &nopLink) {
+      if (!link->receivePacket(&p)) {
+        if (queues[p.port]) {
+          if (xQueueSend(queues[p.port], &p, 0) == errQUEUE_FULL) {
             // We should never drop packet
             ASSERT(0);
           }
         }
 
-        if (callbacks[p.port])
-        {
+        if (callbacks[p.port]) {
           callbacks[p.port](&p);
         }
 
         stats.rxCount++;
         updateStats();
       }
-    }
-    else
-    {
+    } else {
       vTaskDelay(M2T(10));
     }
   }
 }
 
-void crtpRegisterPortCB(int port, CrtpCallback cb)
-{
+void crtpRegisterPortCB(int port, CrtpCallback cb) {
   if (port>CRTP_NBR_OF_PORTS)
     return;
 
   callbacks[port] = cb;
 }
 
-int crtpSendPacket(CRTPPacket *p)
-{
+int crtpSendPacket(CRTPPacket *p) {
   ASSERT(p);
   ASSERT(p->size <= CRTP_MAX_DATA_SIZE);
 
   return xQueueSend(txQueue, p, 0);
 }
 
-int crtpSendPacketBlock(CRTPPacket *p)
-{
+int crtpSendPacketBlock(CRTPPacket *p) {
   ASSERT(p);
   ASSERT(p->size <= CRTP_MAX_DATA_SIZE);
 
   return xQueueSend(txQueue, p, portMAX_DELAY);
 }
 
-int crtpReset(void)
-{
+int crtpReset(void) {
   xQueueReset(txQueue);
   if (link->reset) {
     link->reset();
@@ -236,16 +209,14 @@ int crtpReset(void)
   return 0;
 }
 
-bool crtpIsConnected(void)
-{
+bool crtpIsConnected(void) {
   if (link->isConnected)
     return link->isConnected();
   return true;
 }
 
-void crtpSetLink(struct crtpLinkOperations * lk)
-{
-  if(link)
+void crtpSetLink(struct crtpLinkOperations * lk) {
+  if (link)
     link->setEnable(false);
 
   if (lk)
@@ -256,19 +227,16 @@ void crtpSetLink(struct crtpLinkOperations * lk)
   link->setEnable(true);
 }
 
-static int nopFunc(void)
-{
+static int nopFunc(void) {
   return ENETDOWN;
 }
 
-static void clearStats()
-{
+static void clearStats() {
   stats.rxCount = 0;
   stats.txCount = 0;
 }
 
-static void updateStats()
-{
+static void updateStats() {
   uint32_t now = xTaskGetTickCount();
   if (now > stats.nextStatisticsTime) {
     float interval = now - stats.previousStatisticsTime;

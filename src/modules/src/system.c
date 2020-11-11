@@ -91,14 +91,12 @@ static StaticSemaphore_t canStartMutexBuffer;
 static void systemTask(void *arg);
 
 /* Public functions */
-void systemLaunch(void)
-{
+void systemLaunch(void) {
   STATIC_MEM_TASK_CREATE(systemTask, systemTask, SYSTEM_TASK_NAME, NULL, SYSTEM_TASK_PRI);
 }
 
 // This must be the first module to be initialized!
-void systemInit(void)
-{
+void systemInit(void) {
   if(isInit)
     return;
 
@@ -109,13 +107,16 @@ void systemInit(void)
   sysLoadInit();
 
   /* Initialized here so that DEBUG_PRINT (buffered) can be used early */
-  debugInit();
-  crtpInit();
-  consoleInit();
+  // Guojun: disabled for test
+  // debugInit();
+  // crtpInit();
+  // consoleInit();
 
   DEBUG_PRINT("----------------------------\n");
   DEBUG_PRINT("%s is up and running!\n", platformConfigGetDeviceTypeName());
 
+  while (1) {}
+    
   if (V_PRODUCTION_RELEASE) {
     DEBUG_PRINT("Production release %s\n", V_STAG);
   } else {
@@ -141,8 +142,7 @@ void systemInit(void)
   isInit = true;
 }
 
-bool systemTest()
-{
+bool systemTest() {
   bool pass=isInit;
 
   pass &= ledseqTest();
@@ -154,8 +154,7 @@ bool systemTest()
 
 /* Private functions implementation */
 
-void systemTask(void *arg)
-{
+void systemTask(void *arg) {
   bool pass = true;
 
   ledInit();
@@ -182,8 +181,7 @@ void systemTask(void *arg)
   deckInit();
   estimator = deckGetRequiredEstimator();
   stabilizerInit(estimator);
-  if (deckGetRequiredLowInterferenceRadioMode() && platformConfigPhysicalLayoutAntennasAreClose())
-  {
+  if (deckGetRequiredLowInterferenceRadioMode() && platformConfigPhysicalLayoutAntennasAreClose()) {
     platformSetLowInterferenceRadioMode();
   }
   soundInit();
@@ -207,34 +205,26 @@ void systemTask(void *arg)
   pass &= peerLocalizationTest();
 
   //Start the firmware
-  if(pass)
-  {
+  if (pass) {
     selftestPassed = 1;
     systemStart();
     soundSetEffect(SND_STARTUP);
     ledseqRun(&seq_alive);
     ledseqRun(&seq_testPassed);
-  }
-  else
-  {
+  } else {
     selftestPassed = 0;
-    if (systemTest())
-    {
-      while(1)
-      {
+    if (systemTest()) {
+      while(1) {
         ledseqRun(&seq_testFailed);
         vTaskDelay(M2T(2000));
         // System can be forced to start by setting the param to 1 from the cfclient
-        if (selftestPassed)
-        {
+        if (selftestPassed) {
 	        DEBUG_PRINT("Start forced.\n");
           systemStart();
           break;
         }
       }
-    }
-    else
-    {
+    } else {
       ledInit();
       ledSet(SYS_LED, true);
     }
@@ -250,8 +240,7 @@ void systemTask(void *arg)
 
 
 /* Global system variables */
-void systemStart()
-{
+void systemStart() {
   xSemaphoreGive(canStartMutex);
 #ifndef DEBUG
   watchdogInit();

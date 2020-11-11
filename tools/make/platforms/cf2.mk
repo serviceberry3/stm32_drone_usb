@@ -5,6 +5,11 @@ PLATFORM_NAME_cf2 = CF2 platform
 
 CPU=stm32f4
 
+CFLAGS += -DDEVICE_TYPE_STRING_FORCE="F407"
+# debug print to uart2
+CFLAGS += -DENABLE_UART2
+CFLAGS += -DDEBUG_PRINT_ON_UART2
+
 ######### Sensors configuration ##########
 CFLAGS += -DSENSOR_INCLUDED_BMI088_BMP388
 PROJ_OBJ += sensors_bmi088_bmp388.o
@@ -14,6 +19,9 @@ PROJ_OBJ += sensors_mpu9250_lps25h.o
 
 CFLAGS += -DSENSOR_INCLUDED_BMI088_SPI_BMP388
 PROJ_OBJ += sensors_bmi088_spi_bmp388.o
+# should be bmi270_bmp388
+CFLAGS += -DSENSOR_INCLUDED_BMI270_BMP388
+# PROJ_OBJ += sensors_bmi088_bmp388.o
 
 ######### Stabilizer configuration ##########
 ESTIMATOR          ?= any

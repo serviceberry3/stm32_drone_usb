@@ -56,23 +56,18 @@ static void addBufferFullMarker();
  * Send the data to the client
  * returns TRUE if successful otherwise FALSE
  */
-static bool consoleSendMessage(void)
-{
-  if (crtpSendPacket(&messageToPrint) == pdTRUE)
-  {
+static bool consoleSendMessage(void) {
+  if (crtpSendPacket(&messageToPrint) == pdTRUE) {
     messageToPrint.size = 0;
     messageSendingIsPending = false;
-  }
-  else
-  {
+  } else {
     return false;
   }
 
   return true;
 }
 
-void consoleInit()
-{
+void consoleInit() {
   if (isInit)
     return;
 
@@ -84,13 +79,11 @@ void consoleInit()
   isInit = true;
 }
 
-bool consoleTest(void)
-{
+bool consoleTest(void) {
   return isInit;
 }
 
-int consolePutchar(int ch)
-{
+int consolePutchar(int ch) {
   bool isInInterrupt = (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) != 0;
 
   if (!isInit) {
@@ -101,26 +94,20 @@ int consolePutchar(int ch)
     return consolePutcharFromISR(ch);
   }
 
-  if (xSemaphoreTake(synch, portMAX_DELAY) == pdTRUE)
-  {
+  if (xSemaphoreTake(synch, portMAX_DELAY) == pdTRUE) {
     // Try to send if we already have a pending message
-    if (messageSendingIsPending) 
-    {
+    if (messageSendingIsPending) {
       consoleSendMessage();
     }
 
-    if (! messageSendingIsPending) 
-    {
-      if (messageToPrint.size < CRTP_MAX_DATA_SIZE)
-      {
+    if (! messageSendingIsPending) {
+      if (messageToPrint.size < CRTP_MAX_DATA_SIZE) {
         messageToPrint.data[messageToPrint.size] = (unsigned char)ch;
         messageToPrint.size++;
       }
 
-      if (ch == '\n' || messageToPrint.size >= CRTP_MAX_DATA_SIZE)
-      {
-        if (crtpGetFreeTxQueuePackets() == 1)
-        {
+      if (ch == '\n' || messageToPrint.size >= CRTP_MAX_DATA_SIZE) {
+        if (crtpGetFreeTxQueuePackets() == 1) {
           addBufferFullMarker();
         }
         messageSendingIsPending = true;
@@ -137,8 +124,7 @@ int consolePutcharFromISR(int ch) {
   BaseType_t higherPriorityTaskWoken;
 
   if (xSemaphoreTakeFromISR(synch, &higherPriorityTaskWoken) == pdTRUE) {
-    if (messageToPrint.size < CRTP_MAX_DATA_SIZE)
-    {
+    if (messageToPrint.size < CRTP_MAX_DATA_SIZE) {
       messageToPrint.data[messageToPrint.size] = (unsigned char)ch;
       messageToPrint.size++;
     }
@@ -148,45 +134,38 @@ int consolePutcharFromISR(int ch) {
   return ch;
 }
 
-int consolePuts(char *str)
-{
+int consolePuts(char *str) {
   int ret = 0;
 
-  while(*str)
+  while (*str)
     ret |= consolePutchar(*str++);
 
   return ret;
 }
 
-void consoleFlush(void)
-{
-  if (xSemaphoreTake(synch, portMAX_DELAY) == pdTRUE)
-  {
+void consoleFlush(void) {
+  if (xSemaphoreTake(synch, portMAX_DELAY) == pdTRUE) {
     consoleSendMessage();
     xSemaphoreGive(synch);
   }
 }
 
 
-static int findMarkerStart()
-{
+static int findMarkerStart() {
   int start = messageToPrint.size;
   
   // If last char is new line, rewind one char since the marker contains a new line.
-  if (start > 0 && messageToPrint.data[start - 1] == '\n')
-  {
+  if (start > 0 && messageToPrint.data[start - 1] == '\n') {
     start -= 1;
   }
 
   return start;
 }
 
-static void addBufferFullMarker()
-{
+static void addBufferFullMarker() {
   // Try to add the marker after the message if it fits in the buffer, otherwise overwrite the end of the message 
   int endMarker = findMarkerStart() + sizeof(bufferFullMsg);
-  if (endMarker >= (CRTP_MAX_DATA_SIZE)) 
-  {
+  if (endMarker >= (CRTP_MAX_DATA_SIZE)) {
     endMarker = CRTP_MAX_DATA_SIZE;
   }
 

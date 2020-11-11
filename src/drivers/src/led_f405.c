@@ -61,11 +61,10 @@ static int led_polarity[] =
 static bool isInit = false;
 
 //Initialize the green led pin as output
-void ledInit()
-{
+void ledInit() {
   int i;
 
-  if(isInit)
+  if (isInit)
     return;
 
   GPIO_InitTypeDef GPIO_InitStructure;
@@ -73,8 +72,7 @@ void ledInit()
   // Enable GPIO
   RCC_AHB1PeriphClockCmd(LED_GPIO_PERIF, ENABLE);
 
-  for (i = 0; i < LED_NUM; i++)
-  {
+  for (i = 0; i < LED_NUM; i++) {
     //Initialize the LED pins as an output
     GPIO_InitStructure.GPIO_Pin = led_pin[i];
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;

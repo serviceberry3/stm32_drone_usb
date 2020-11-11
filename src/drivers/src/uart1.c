@@ -112,8 +112,7 @@ void uart1Init(const uint32_t baudrate) {
   uart1InitWithParity(baudrate, uart1ParityNone);
 }
 
-void uart1InitWithParity(const uint32_t baudrate, const uart1Parity_t parity)
-{
+void uart1InitWithParity(const uint32_t baudrate, const uart1Parity_t parity) {
 
   USART_InitTypeDef USART_InitStructure;
   GPIO_InitTypeDef GPIO_InitStructure;
