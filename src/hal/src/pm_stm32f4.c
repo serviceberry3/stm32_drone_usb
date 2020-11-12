@@ -133,12 +133,10 @@ static void pmSetBatteryVoltage(float voltage)
 {
   batteryVoltage = voltage;
   batteryVoltageMV = (uint16_t)(voltage * 1000);
-  if (batteryVoltageMax < voltage)
-  {
+  if (batteryVoltageMax < voltage) {
     batteryVoltageMax = voltage;
   }
-  if (batteryVoltageMin > voltage)
-  {
+  if (batteryVoltageMin > voltage) {
     batteryVoltageMin = voltage;
   }
 }

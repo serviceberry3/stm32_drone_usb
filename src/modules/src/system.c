@@ -97,7 +97,7 @@ void systemLaunch(void) {
 
 // This must be the first module to be initialized!
 void systemInit(void) {
-  if(isInit)
+  if (isInit)
     return;
 
   canStartMutex = xSemaphoreCreateMutexStatic(&canStartMutexBuffer);
@@ -108,15 +108,16 @@ void systemInit(void) {
 
   /* Initialized here so that DEBUG_PRINT (buffered) can be used early */
   // Guojun: disabled for test
+  // for SEGGER debugger
   // debugInit();
+  // radio link
   // crtpInit();
+  // used to print to client
   // consoleInit();
 
   DEBUG_PRINT("----------------------------\n");
   DEBUG_PRINT("%s is up and running!\n", platformConfigGetDeviceTypeName());
 
-  while (1) {}
-    
   if (V_PRODUCTION_RELEASE) {
     DEBUG_PRINT("Production release %s\n", V_STAG);
   } else {
@@ -124,16 +125,27 @@ void systemInit(void) {
                 V_SREVISION, V_STAG, (V_MODIFIED)?"MODIFIED":"CLEAN");
   }
   DEBUG_PRINT("I am 0x%08X%08X%08X and I have %dKB of flash!\n",
-              *((int*)(MCU_ID_ADDRESS+8)), *((int*)(MCU_ID_ADDRESS+4)),
-              *((int*)(MCU_ID_ADDRESS+0)), *((short*)(MCU_FLASH_SIZE_ADDRESS)));
+              *((int*)(MCU_ID_ADDRESS + 8)), *((int*)(MCU_ID_ADDRESS + 4)),
+              *((int*)(MCU_ID_ADDRESS + 0)), *((short*)(MCU_FLASH_SIZE_ADDRESS)));
 
   configblockInit();
+
+  systemStart();
+  workerLoop();
+  // Should never reach this point!
+  while (1)
+    vTaskDelay(portMAX_DELAY);
+
+
   workerInit();
   adcInit();
   ledseqInit();
   pmInit();
   buzzerInit();
   peerLocalizationInit();
+
+
+  
 
 #ifdef APP_ENABLED
   appInit();
@@ -171,7 +183,7 @@ void systemTask(void *arg) {
   uart2Init(115200);
 #endif
 
-  //Init the high-levels modules
+  // Init the high-levels modules
   systemInit();
   commInit();
   commanderInit();
@@ -191,7 +203,7 @@ void systemTask(void *arg) {
   proximityInit();
 #endif
 
-  //Test the modules
+  // Test the modules
   pass &= systemTest();
   pass &= configblockTest();
   pass &= commTest();
@@ -204,7 +216,7 @@ void systemTask(void *arg) {
   pass &= watchdogNormalStartTest();
   pass &= peerLocalizationTest();
 
-  //Start the firmware
+  // Start the firmware
   if (pass) {
     selftestPassed = 1;
     systemStart();
@@ -233,8 +245,8 @@ void systemTask(void *arg) {
 
   workerLoop();
 
-  //Should never reach this point!
-  while(1)
+  // Should never reach this point!
+  while (1)
     vTaskDelay(portMAX_DELAY);
 }
 
@@ -247,8 +259,7 @@ void systemStart() {
 #endif
 }
 
-void systemWaitStart(void)
-{
+void systemWaitStart(void) {
   //This permits to guarantee that the system task is initialized before other
   //tasks waits for the start event.
   while(!isInit)
@@ -258,35 +269,29 @@ void systemWaitStart(void)
   xSemaphoreGive(canStartMutex);
 }
 
-void systemSetCanFly(bool val)
-{
+void systemSetCanFly(bool val) {
   canFly = val;
 }
 
-bool systemCanFly(void)
-{
+bool systemCanFly(void) {
   return canFly;
 }
 
-void systemSetArmed(bool val)
-{
+void systemSetArmed(bool val) {
   armed = val;
 }
 
-bool systemIsArmed()
-{
+bool systemIsArmed() {
 
   return armed || forceArm;
 }
 
-void vApplicationIdleHook( void )
-{
+void vApplicationIdleHook( void ) {
   static uint32_t tickOfLatestWatchdogReset = M2T(0);
 
   portTickType tickCount = xTaskGetTickCount();
 
-  if (tickCount - tickOfLatestWatchdogReset > M2T(WATCHDOG_RESET_PERIOD_MS))
-  {
+  if (tickCount - tickOfLatestWatchdogReset > M2T(WATCHDOG_RESET_PERIOD_MS)) {
     tickOfLatestWatchdogReset = tickCount;
     watchdogReset();
   }

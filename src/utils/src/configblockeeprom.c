@@ -77,8 +77,7 @@ struct configblock_v1_s {
 typedef struct configblock_v1_s configblock_t;
 
 static configblock_t configblock;
-static configblock_t configblockDefault =
-{
+static configblock_t configblockDefault = {
     .magic = MAGIC,
     .version = VERSION,
     .radioChannel = RADIO_CHANNEL,
@@ -89,8 +88,7 @@ static configblock_t configblockDefault =
     .radioAddress_lower = (RADIO_ADDRESS & 0xFFFFFFFFULL),
 };
 
-static const uint32_t configblockSizes[] =
-{
+static const uint32_t configblockSizes[] = {
   sizeof(struct configblock_v0_s),
   sizeof(struct configblock_v1_s),
 };
@@ -105,69 +103,56 @@ static bool configblockCheckDataIntegrity(uint8_t *data, uint8_t version);
 static bool configblockWrite(configblock_t *configblock);
 static bool configblockCopyToNewVersion(configblock_t *configblockSaved, configblock_t *configblockNew);
 
-static uint8_t calculate_cksum(void* data, size_t len)
-{
+static uint8_t calculate_cksum(void* data, size_t len) {
   unsigned char* c = data;
   int i;
-  unsigned char cksum=0;
+  unsigned char cksum = 0;
   
-  for (i=0; i<len; i++)
+  for (i = 0; i < len; i++)
     cksum += *(c++);
 
   return cksum;
 }
 
-int configblockInit(void)
-{
-  if(isInit)
+int configblockInit(void) {
+  DEBUG_PRINT("ENTER CONFIGBLOCKINIT\n");
+  if (isInit)
     return 0;
 
   i2cdevInit(I2C1_DEV);
+  DEBUG_PRINT("I2C init done\n");
   eepromInit(I2C1_DEV);
+  DEBUG_PRINT("eep init done\n");
 
   // Because of strange behavior from I2C device during expansion port test
   // the first read needs to be discarded
   eepromTestConnection();
 
-  if (eepromTestConnection())
-  {
-    if (eepromReadBuffer((uint8_t *)&configblock, 0, sizeof(configblock)))
-    {
+  if (eepromTestConnection()) {
+    if (eepromReadBuffer((uint8_t*) &configblock, 0, sizeof(configblock))) {
       //Verify the config block
-      if (configblockCheckMagic(&configblock))
-      {
-        if (configblockCheckVersion(&configblock))
-        {
-          if (configblockCheckChecksum(&configblock))
-          {
+      if (configblockCheckMagic(&configblock)) {
+        if (configblockCheckVersion(&configblock)) {
+          if (configblockCheckChecksum(&configblock)) {
             // Everything is fine
             DEBUG_PRINT("v%d, verification [OK]\n", configblock.version);
             cb_ok = true;
-          }
-          else
-          {
+          } else {
             DEBUG_PRINT("Verification [FAIL]\n");
             cb_ok = false;
           }
-        }
-        else // configblockCheckVersion
-        {
+        } else { // configblockCheckVersion
           // Check data integrity of old version data
           if (configblock.version <= VERSION &&
-              configblockCheckDataIntegrity((uint8_t *)&configblock, configblock.version))
-          {
+              configblockCheckDataIntegrity((uint8_t *)&configblock, configblock.version)) {
             // Not the same version, try to upgrade
-            if (configblockCopyToNewVersion(&configblock, &configblockDefault))
-            {
+            if (configblockCopyToNewVersion(&configblock, &configblockDefault)) {
               // Write updated config block to eeprom
-              if (configblockWrite(&configblock))
-              {
+              if (configblockWrite(&configblock)) {
                 cb_ok = true;
               }
             }
-          }
-          else
-          {
+          } else {
             // Can't copy old version due to bad data.
             cb_ok = false;
           }
@@ -176,17 +161,13 @@ int configblockInit(void)
     }
   }
 
-  if (cb_ok == false)
-  {
+  if (cb_ok == false) {
     // Copy default data to used structure.
-    memcpy((uint8_t *)&configblock, (uint8_t *)&configblockDefault, sizeof(configblock));
+    memcpy((uint8_t*) &configblock, (uint8_t*) &configblockDefault, sizeof(configblock));
     // Write default configuration to eeprom
-    if (configblockWrite(&configblockDefault))
-    {
+    if (configblockWrite(&configblockDefault)) {
       cb_ok = true;
-    }
-    else
-    {
+    } else {
       return -1;
     }
   }
@@ -196,37 +177,29 @@ int configblockInit(void)
   return 0;
 }
 
-bool configblockTest(void)
-{
+bool configblockTest(void) {
   return eepromTest();
 }
 
-static bool configblockCheckMagic(configblock_t *configblock)
-{
+static bool configblockCheckMagic(configblock_t *configblock) {
   return (configblock->magic == MAGIC);
 }
 
-static bool configblockCheckVersion(configblock_t *configblock)
-{
+static bool configblockCheckVersion(configblock_t *configblock) {
   return (configblock->version == VERSION);
 }
 
-static bool configblockCheckChecksum(configblock_t *configblock)
-{
+static bool configblockCheckChecksum(configblock_t *configblock) {
   return (configblock->cksum == calculate_cksum(configblock, sizeof(configblock_t) - 1));
 }
 
-static bool configblockCheckDataIntegrity(uint8_t *data, uint8_t version)
-{
+static bool configblockCheckDataIntegrity(uint8_t *data, uint8_t version) {
   bool status = false;
 
-  if (version == 0)
-  {
+  if (version == 0) {
     struct configblock_v0_s *v0 = ( struct configblock_v0_s *)data;
     status = (v0->cksum == calculate_cksum(data, sizeof(struct configblock_v0_s) - 1));
-  }
-  else if (version == 1)
-  {
+  } else if (version == 1) {
     struct configblock_v1_s *v1 = ( struct configblock_v1_s *)data;
     status = (v1->cksum == calculate_cksum(data, sizeof(struct configblock_v1_s) - 1));
   }
@@ -234,37 +207,31 @@ static bool configblockCheckDataIntegrity(uint8_t *data, uint8_t version)
   return status;
 }
 
-static bool configblockWrite(configblock_t *configblock)
-{
+static bool configblockWrite(configblock_t *configblock) {
   // Write default configuration to eeprom
   configblock->cksum = calculate_cksum(configblock, sizeof(configblock_t) - 1);
-  if (!eepromWriteBuffer((uint8_t *)configblock, 0, sizeof(configblock_t)))
-  {
+  if (!eepromWriteBuffer((uint8_t *)configblock, 0, sizeof(configblock_t))) {
     return false;
   }
 
   return true;
 }
 
-static bool configblockCopyToNewVersion(configblock_t *configblockSaved, configblock_t *configblockNew)
-{
+static bool configblockCopyToNewVersion(configblock_t *configblockSaved, configblock_t *configblockNew) {
   configblock_t configblockTmp;
 
   // Copy new data to temp config memory
   memcpy((uint8_t *)&configblockTmp, (uint8_t *)configblockNew, sizeof(configblock_t));
 
   if (configblockSaved->version <= VERSION &&
-      sizeof(configblock_t) >= configblockSizes[configblockSaved->version])
-  {
+      sizeof(configblock_t) >= configblockSizes[configblockSaved->version]) {
     // Copy old saved eeprom data to new structure
     memcpy((uint8_t *)&configblockTmp + HEADER_SIZE_BYTES,
            (uint8_t *)configblockSaved + HEADER_SIZE_BYTES,
            configblockSizes[configblockSaved->version] - OVERHEAD_SIZE_BYTES);
     // Copy updated block to saved structure
     memcpy((uint8_t *)configblockSaved, (uint8_t *)&configblockTmp, sizeof(configblock_t));
-  }
-  else
-  {
+  } else {
     return false;
   }
 
@@ -272,40 +239,35 @@ static bool configblockCopyToNewVersion(configblock_t *configblockSaved, configb
 }
 
 /* Static accessors */
-int configblockGetRadioChannel(void)
-{
+int configblockGetRadioChannel(void) {
   if (cb_ok)
     return configblock.radioChannel;
   else
     return RADIO_CHANNEL;
 }
 
-int configblockGetRadioSpeed(void)
-{
+int configblockGetRadioSpeed(void) {
   if (cb_ok)
     return configblock.radioSpeed;
   else
     return RADIO_DATARATE;
 }
 
-uint64_t configblockGetRadioAddress(void)
-{
+uint64_t configblockGetRadioAddress(void) {
   if (cb_ok)
     return ((uint64_t)configblock.radioAddress_upper << 32) | (uint64_t)configblock.radioAddress_lower;
   else
     return RADIO_ADDRESS;
 }
 
-float configblockGetCalibPitch(void)
-{
+float configblockGetCalibPitch(void) {
   if (cb_ok)
     return configblock.calibPitch;
   else
     return 0;
 }
 
-float configblockGetCalibRoll(void)
-{
+float configblockGetCalibRoll(void) {
   if (cb_ok)
     return configblock.calibRoll;
   else

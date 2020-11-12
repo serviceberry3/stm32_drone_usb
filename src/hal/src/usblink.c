@@ -115,7 +115,7 @@ static int usblinkSetEnable(bool enable) {
  */
 
 void usblinkInit() {
-  if(isInit)
+  if (isInit)
     return;
 
   // Initialize the USB peripheral

@@ -56,8 +56,7 @@ static uint8_t devAddr;
 static I2C_Dev *I2Cx;
 static bool isInit;
 
-bool eepromInit(I2C_Dev *i2cPort)
-{
+bool eepromInit(I2C_Dev *i2cPort) {
   if (isInit) {
     return true;
   }
@@ -72,17 +71,13 @@ bool eepromInit(I2C_Dev *i2cPort)
   return true;
 }
 
-bool eepromTest(void)
-{
+bool eepromTest(void) {
   bool status;
 
   status = eepromTestConnection();
-  if (status)
-  {
+  if (status) {
     DEBUG_PRINT("I2C connection [OK].\n");
-  }
-  else
-  {
+  } else {
     DEBUG_PRINT("I2C connection [FAIL].\n");
   }
 

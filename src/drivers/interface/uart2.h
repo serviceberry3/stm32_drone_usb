@@ -47,12 +47,19 @@
 #define UART2_DMA_CH            DMA_Channel_4
 #define UART2_DMA_FLAG_TCIF     DMA_FLAG_TCIF6
 
-#define UART2_GPIO_PERIF       RCC_AHB1Periph_GPIOA
-#define UART2_GPIO_PORT        GPIOA
-#define UART2_GPIO_TX_PIN      GPIO_Pin_2
-#define UART2_GPIO_RX_PIN      GPIO_Pin_3
-#define UART2_GPIO_AF_TX_PIN   GPIO_PinSource2
-#define UART2_GPIO_AF_RX_PIN   GPIO_PinSource3
+#define UART2_GPIO_PERIF       RCC_AHB1Periph_GPIOD
+#define UART2_GPIO_PORT        GPIOD
+#define UART2_GPIO_TX_PIN      GPIO_Pin_5
+#define UART2_GPIO_RX_PIN      GPIO_Pin_6
+#define UART2_GPIO_AF_TX_PIN   GPIO_PinSource5
+#define UART2_GPIO_AF_RX_PIN   GPIO_PinSource6
+// Guojun: change UART2 pin for debug
+// #define UART2_GPIO_PERIF       RCC_AHB1Periph_GPIOA
+// #define UART2_GPIO_PORT        GPIOA
+// #define UART2_GPIO_TX_PIN      GPIO_Pin_2
+// #define UART2_GPIO_RX_PIN      GPIO_Pin_3
+// #define UART2_GPIO_AF_TX_PIN   GPIO_PinSource2
+// #define UART2_GPIO_AF_RX_PIN   GPIO_PinSource3
 #define UART2_GPIO_AF_TX       GPIO_AF_USART2
 #define UART2_GPIO_AF_RX       GPIO_AF_USART2
 

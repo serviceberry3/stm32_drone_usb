@@ -43,8 +43,7 @@
 
 static bool isInit;
 
-void commInit(void)
-{
+void commInit(void) {
   if (isInit)
     return;
 
@@ -74,8 +73,7 @@ void commInit(void)
   isInit = true;
 }
 
-bool commTest(void)
-{
+bool commTest(void) {
   bool pass=isInit;
   
   pass &= radiolinkTest();

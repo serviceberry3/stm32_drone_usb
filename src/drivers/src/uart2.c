@@ -81,8 +81,7 @@ static bool hasOverrun = false;
   * Configures the UART DMA. Mainly used for FreeRTOS trace
   * data transfer.
   */
-static void uart2DmaInit(void)
-{
+static void uart2DmaInit(void) {
   NVIC_InitTypeDef NVIC_InitStructure;
 
   RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA1, ENABLE);
@@ -121,9 +120,9 @@ static void uart2DmaInit(void)
   isUartDmaInitialized = true;
 }
 
-void uart2Init(const uint32_t baudrate)
-{
-
+void uart2Init(const uint32_t baudrate) {
+  if (isInit) return;
+  
   USART_InitTypeDef USART_InitStructure;
   GPIO_InitTypeDef GPIO_InitStructure;
   NVIC_InitTypeDef NVIC_InitStructure;
@@ -138,16 +137,16 @@ void uart2Init(const uint32_t baudrate)
   ENABLE_UART2_RCC(UART2_PERIF, ENABLE);
 
   /* Configure USART Rx as input floating */
-  GPIO_InitStructure.GPIO_Pin   = UART2_GPIO_RX_PIN;
-  GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AF;
+  GPIO_InitStructure.GPIO_Pin = UART2_GPIO_RX_PIN;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
   GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
   GPIO_Init(UART2_GPIO_PORT, &GPIO_InitStructure);
 
   /* Configure USART Tx as alternate function */
-  GPIO_InitStructure.GPIO_Pin   = UART2_GPIO_TX_PIN;
+  GPIO_InitStructure.GPIO_Pin  = UART2_GPIO_TX_PIN;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_25MHz;
   GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-  GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AF;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
   GPIO_Init(UART2_GPIO_PORT, &GPIO_InitStructure);
 
   //Map uart to alternate functions
@@ -192,32 +191,27 @@ void uart2Init(const uint32_t baudrate)
   isInit = true;
 }
 
-bool uart2Test(void)
-{
+bool uart2Test(void) {
   return isInit;
 }
 
-void uart2SendData(uint32_t size, uint8_t* data)
-{
+void uart2SendData(uint32_t size, uint8_t* data) {
   uint32_t i;
 
   if (!isInit)
     return;
 
-  for(i = 0; i < size; i++)
-  {
+  for(i = 0; i < size; i++) {
     while (!(UART2_TYPE->SR & USART_FLAG_TXE));
     UART2_TYPE->DR = (data[i] & 0x00FF);
   }
 }
 
-void uart2SendDataDmaBlocking(uint32_t size, uint8_t* data)
-{
-  if (isUartDmaInitialized)
-  {
+void uart2SendDataDmaBlocking(uint32_t size, uint8_t* data) {
+  if (isUartDmaInitialized) {
     xSemaphoreTake(uartBusy, portMAX_DELAY);
     // Wait for DMA to be free
-    while(DMA_GetCmdStatus(UART2_DMA_STREAM) != DISABLE);
+    while (DMA_GetCmdStatus(UART2_DMA_STREAM) != DISABLE);
     //Copy data in DMA buffer
     memcpy(dmaBuffer, data, size);
     DMA_InitStructureShare.DMA_BufferSize = size;
@@ -237,8 +231,7 @@ void uart2SendDataDmaBlocking(uint32_t size, uint8_t* data)
   }
 }
 
-int uart2Putchar(int ch)
-{
+int uart2Putchar(int ch) {
     uart2SendData(1, (uint8_t *)&ch);
 
     return (unsigned char)ch;
@@ -246,15 +239,12 @@ int uart2Putchar(int ch)
 
 #ifdef UART2_LINK_COMM
 
-void uart2GetPacketBlocking(SyslinkPacket* packet)
-{
+void uart2GetPacketBlocking(SyslinkPacket* packet) {
   xQueueReceive(uart2PacketDelivery, packet, portMAX_DELAY);
 }
 
-void uart2HandleDataFromISR(uint8_t c, BaseType_t * const pxHigherPriorityTaskWoken)
-{
-  switch (rxState)
-  {
+void uart2HandleDataFromISR(uint8_t c, BaseType_t * const pxHigherPriorityTaskWoken) {
+  switch (rxState) {
   case waitForFirstStart:
     rxState = (c == SYSLINK_START_BYTE1) ? waitForSecondStart : waitForFirstStart;
     break;
@@ -268,16 +258,13 @@ void uart2HandleDataFromISR(uint8_t c, BaseType_t * const pxHigherPriorityTaskWo
     rxState = waitForLength;
     break;
   case waitForLength:
-    if (c <= SYSLINK_MTU)
-    {
+    if (c <= SYSLINK_MTU) {
       slp.length = c;
       cksum[0] += c;
       cksum[1] += cksum[0];
       dataIndex = 0;
       rxState = (c > 0) ? waitForData : waitForChksum1;
-    }
-    else
-    {
+    } else {
       rxState = waitForFirstStart;
     }
     break;
@@ -286,37 +273,27 @@ void uart2HandleDataFromISR(uint8_t c, BaseType_t * const pxHigherPriorityTaskWo
     cksum[0] += c;
     cksum[1] += cksum[0];
     dataIndex++;
-    if (dataIndex == slp.length)
-    {
+    if (dataIndex == slp.length) {
       rxState = waitForChksum1;
     }
     break;
   case waitForChksum1:
-    if (cksum[0] == c)
-    {
+    if (cksum[0] == c) {
       rxState = waitForChksum2;
-    }
-    else
-    {
+    } else {
       rxState = waitForFirstStart; //Checksum error
       IF_DEBUG_ASSERT(0);
     }
     break;
   case waitForChksum2:
-    if (cksum[1] == c)
-    {
+    if (cksum[1] == c) {
       // Post the packet to the queue if there's room
-      if (!xQueueIsQueueFullFromISR(uart2PacketDelivery))
-      {
+      if (!xQueueIsQueueFullFromISR(uart2PacketDelivery)) {
         xQueueSendFromISR(uart2PacketDelivery, (void *)&slp, pxHigherPriorityTaskWoken);
-      }
-      else
-      {
+      } else {
         IF_DEBUG_ASSERT(0); // Queue overflow
       }
-    }
-    else
-    {
+    } else {
       rxState = waitForFirstStart; //Checksum error
       IF_DEBUG_ASSERT(0);
     }
@@ -330,10 +307,8 @@ void uart2HandleDataFromISR(uint8_t c, BaseType_t * const pxHigherPriorityTaskWo
 
 #else
 
-bool uart2GetDataWithTimeout(uint8_t *c, const uint32_t timeoutTicks)
-{
-  if (xQueueReceive(uart2queue, c, timeoutTicks) == pdTRUE)
-  {
+bool uart2GetDataWithTimeout(uint8_t *c, const uint32_t timeoutTicks) {
+  if (xQueueReceive(uart2queue, c, timeoutTicks) == pdTRUE) {
     return true;
   }
 
@@ -341,18 +316,15 @@ bool uart2GetDataWithTimeout(uint8_t *c, const uint32_t timeoutTicks)
   return false;
 }
 
-bool uart2GetDataWithDefaultTimeout(uint8_t *c)
-{
+bool uart2GetDataWithDefaultTimeout(uint8_t *c) {
   return uart2GetDataWithTimeout(c, UART2_DATA_TIMEOUT_TICKS);
 }
 
-void uart2Getchar(char * ch)
- {
+void uart2Getchar(char * ch) {
   xQueueReceive(uart2queue, ch, portMAX_DELAY);
- }
+}
 
-bool uart2DidOverrun()
-{
+bool uart2DidOverrun() {
   bool result = hasOverrun;
   hasOverrun = false;
 
@@ -361,8 +333,7 @@ bool uart2DidOverrun()
 
 #endif
 
-void __attribute__((used)) DMA1_Stream6_IRQHandler(void)
-{
+void __attribute__((used)) DMA1_Stream6_IRQHandler(void) {
   portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 
   // Stop and cleanup DMA stream
@@ -376,17 +347,13 @@ void __attribute__((used)) DMA1_Stream6_IRQHandler(void)
 
 #ifdef UART2_LINK_COMM
 
-void __attribute__((used)) USART2_IRQHandler(void)
-{
+void __attribute__((used)) USART2_IRQHandler(void) {
     portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 
-  if ((UART2_TYPE->SR & (1<<5)) != 0) // fast check if the RXNE interrupt has occurred
-  {
+  if ((UART2_TYPE->SR & (1<<5)) != 0) { // fast check if the RXNE interrupt has occurred
     uint8_t rxDataInterrupt = (uint8_t)(UART2_TYPE->DR & 0xFF);
     uart2HandleDataFromISR(rxDataInterrupt, &xHigherPriorityTaskWoken);
-  }
-  else
-  {
+  } else {
     /** if we get here, the error is most likely caused by an overrun!
      * - PE (Parity error), FE (Framing error), NE (Noise error), ORE (OverRun error)
      * - and IDLE (Idle line detected) pending bits are cleared by software sequence:
@@ -401,18 +368,14 @@ void __attribute__((used)) USART2_IRQHandler(void)
 
 #else
 
-void __attribute__((used)) USART2_IRQHandler(void)
-{
+void __attribute__((used)) USART2_IRQHandler(void) {
   uint8_t rxData;
   portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 
-  if ((UART2_TYPE->SR & (1<<5)) != 0) // fast check if the RXNE interrupt has occurred
-  {
+  if ((UART2_TYPE->SR & (1<<5)) != 0) { // fast check if the RXNE interrupt has occurred
     rxData = USART_ReceiveData(UART2_TYPE) & 0x00FF;
     xQueueSendFromISR(uart2queue, &rxData, &xHigherPriorityTaskWoken);
-  }
-  else
-  {
+  } else {
     /** if we get here, the error is most likely caused by an overrun!
      * - PE (Parity error), FE (Framing error), NE (Noise error), ORE (OverRun error)
      * - and IDLE (Idle line detected) pending bits are cleared by software sequence:
@@ -424,6 +387,5 @@ void __attribute__((used)) USART2_IRQHandler(void)
     hasOverrun = true;
   }
 }
-
 
 #endif

@@ -49,6 +49,7 @@
 #include "nvicconf.h"
 
 //DEBUG
+#include "debug.h"
 #ifdef I2CDRV_DEBUG_LOG_EVENTS
 #include "usec_time.h"
 #endif
@@ -272,8 +273,7 @@ static void i2cdrvDmaSetupBus(I2cDrv* i2c)
   NVIC_Init(&NVIC_InitStructure);
 }
 
-static void i2cdrvInitBus(I2cDrv* i2c)
-{
+static void i2cdrvInitBus(I2cDrv* i2c) {
   I2C_InitTypeDef  I2C_InitStructure;
   NVIC_InitTypeDef NVIC_InitStructure;
   GPIO_InitTypeDef GPIO_InitStructure;
@@ -316,7 +316,7 @@ static void i2cdrvInitBus(I2cDrv* i2c)
   I2C_InitStructure.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
   I2C_InitStructure.I2C_ClockSpeed = i2c->def->i2cClockSpeed;
   I2C_Init(i2c->def->i2cPort, &I2C_InitStructure);
-
+  
   // Enable I2C_SENSORS error interrupts
   I2C_ITConfig(i2c->def->i2cPort, I2C_IT_ERR, ENABLE);
 
@@ -329,17 +329,15 @@ static void i2cdrvInitBus(I2cDrv* i2c)
   NVIC_Init(&NVIC_InitStructure);
 
   i2cdrvDmaSetupBus(i2c);
-
   i2c->isBusFreeSemaphore = xSemaphoreCreateBinaryStatic(&i2c->isBusFreeSemaphoreBuffer);
   i2c->isBusFreeMutex = xSemaphoreCreateMutexStatic(&i2c->isBusFreeMutexBuffer);
 }
 
-static void i2cdrvdevUnlockBus(GPIO_TypeDef* portSCL, GPIO_TypeDef* portSDA, uint16_t pinSCL, uint16_t pinSDA)
-{
+static void i2cdrvdevUnlockBus(GPIO_TypeDef* portSCL, GPIO_TypeDef* portSDA, uint16_t pinSCL, uint16_t pinSDA) {
   GPIO_SetBits(portSDA, pinSDA);
   /* Check SDA line to determine if slave is asserting bus and clock out if so */
-  while(GPIO_ReadInputDataBit(portSDA, pinSDA) == Bit_RESET)
-  {
+
+  while (GPIO_ReadInputDataBit(portSDA, pinSDA) == Bit_RESET) {
     /* Set clock high */
     GPIO_SetBits(portSCL, pinSCL);
     /* Wait for any clock stretching to finish. */
@@ -352,7 +350,6 @@ static void i2cdrvdevUnlockBus(GPIO_TypeDef* portSCL, GPIO_TypeDef* portSDA, uin
     GPIO_SetBits(portSCL, pinSCL);
     i2cdrvRoughLoopDelay(I2CDEV_CLK_TS);
   }
-
   /* Generate a start then stop condition */
   GPIO_SetBits(portSCL, pinSCL);
   i2cdrvRoughLoopDelay(I2CDEV_CLK_TS);

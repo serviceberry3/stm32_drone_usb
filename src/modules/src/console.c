@@ -100,9 +100,9 @@ int consolePutchar(int ch) {
       consoleSendMessage();
     }
 
-    if (! messageSendingIsPending) {
+    if (!messageSendingIsPending) {
       if (messageToPrint.size < CRTP_MAX_DATA_SIZE) {
-        messageToPrint.data[messageToPrint.size] = (unsigned char)ch;
+        messageToPrint.data[messageToPrint.size] = (unsigned char) ch;
         messageToPrint.size++;
       }
 
@@ -117,7 +117,7 @@ int consolePutchar(int ch) {
     xSemaphoreGive(synch);
   }
 
-  return (unsigned char)ch;
+  return (unsigned char) ch;
 }
 
 int consolePutcharFromISR(int ch) {
@@ -125,7 +125,7 @@ int consolePutcharFromISR(int ch) {
 
   if (xSemaphoreTakeFromISR(synch, &higherPriorityTaskWoken) == pdTRUE) {
     if (messageToPrint.size < CRTP_MAX_DATA_SIZE) {
-      messageToPrint.data[messageToPrint.size] = (unsigned char)ch;
+      messageToPrint.data[messageToPrint.size] = (unsigned char) ch;
       messageToPrint.size++;
     }
     xSemaphoreGiveFromISR(synch, &higherPriorityTaskWoken);

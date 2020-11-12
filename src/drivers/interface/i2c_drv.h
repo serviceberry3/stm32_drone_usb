@@ -9,14 +9,12 @@
 
 #define I2C_NO_INTERNAL_ADDRESS   0xFFFF
 
-typedef enum
-{
+typedef enum {
   i2cAck,
   i2cNack
 } I2cStatus;
 
-typedef enum
-{
+typedef enum {
   i2cWrite,
   i2cRead
 } I2cDirection;
@@ -25,8 +23,7 @@ typedef enum
  * Structure used to capture the I2C message details.  The structure is then
  * queued for processing by the I2C ISR.
  */
-typedef struct _I2cMessage
-{
+typedef struct _I2cMessage {
 	uint32_t         messageLength;		  //< How many bytes of data to send or received.
 	uint8_t          slaveAddress;		  //< The slave address of the device on the I2C bus.
   uint8_t          nbrOfRetries;      //< The slave address of the device on the I2C bus.
@@ -38,8 +35,7 @@ typedef struct _I2cMessage
   uint8_t          *buffer;           //< Pointer to the buffer from where data will be read for transmission, or into which received data will be placed.
 } I2cMessage;
 
-typedef struct
-{
+typedef struct {
   I2C_TypeDef*        i2cPort;
   uint32_t            i2cPerif;
   uint32_t            i2cEVIRQn;
@@ -63,8 +59,7 @@ typedef struct
 
 } I2cDef;
 
-typedef struct
-{
+typedef struct {
   const I2cDef *def;                    //< Definition of the i2c
   I2cMessage txMessage;                 //< The I2C send message
   uint32_t messageIndex;                //< Index of bytes sent/received

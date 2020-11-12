@@ -45,8 +45,7 @@ struct worker_work {
 static xQueueHandle workerQueue;
 STATIC_MEM_QUEUE_ALLOC(workerQueue, WORKER_QUEUE_LENGTH, sizeof(struct worker_work));
 
-void workerInit()
-{
+void workerInit() {
   if (workerQueue)
     return;
 
@@ -54,20 +53,17 @@ void workerInit()
   DEBUG_QUEUE_MONITOR_REGISTER(workerQueue);
 }
 
-bool workerTest()
-{
+bool workerTest() {
   return (workerQueue != NULL);
 }
 
-void workerLoop()
-{
+void workerLoop() {
   struct worker_work work;
 
   if (!workerQueue)
     return;
 
-  while (1)
-  {
+  while (1) {
     xQueueReceive(workerQueue, &work, portMAX_DELAY);
 
     if (work.function)
@@ -75,8 +71,7 @@ void workerLoop()
   }
 }
 
-int workerSchedule(void (*function)(void*), void *arg)
-{
+int workerSchedule(void (*function)(void*), void *arg) {
   struct worker_work work;
 
   if (!function)

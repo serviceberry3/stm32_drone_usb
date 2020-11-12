@@ -52,8 +52,7 @@ static QueueHandle_t priorityQueue;
 STATIC_MEM_QUEUE_ALLOC(priorityQueue, 1, sizeof(int));
 
 /* Public functions */
-void commanderInit(void)
-{
+void commanderInit(void) {
   setpointQueue = STATIC_MEM_QUEUE_CREATE(setpointQueue);
   ASSERT(setpointQueue);
   xQueueSend(setpointQueue, &nullSetpoint, 0);

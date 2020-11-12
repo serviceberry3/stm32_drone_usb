@@ -170,8 +170,7 @@ static void compressState()
   stateCompressed.rateYaw = sensorData.gyro.z * deg2millirad;
 }
 
-static void compressSetpoint()
-{
+static void compressSetpoint() {
   setpointCompressed.x = setpoint.position.x * 1000.0f;
   setpointCompressed.y = setpoint.position.y * 1000.0f;
   setpointCompressed.z = setpoint.position.z * 1000.0f;
@@ -185,8 +184,7 @@ static void compressSetpoint()
   setpointCompressed.az = setpoint.acceleration.z * 1000.0f;
 }
 
-void stabilizerInit(StateEstimatorType estimator)
-{
+void stabilizerInit(StateEstimatorType estimator) {
   if(isInit)
     return;
 
@@ -204,8 +202,7 @@ void stabilizerInit(StateEstimatorType estimator)
   isInit = true;
 }
 
-bool stabilizerTest(void)
-{
+bool stabilizerTest(void) {
   bool pass = true;
 
   pass &= sensorsTest();
@@ -217,8 +214,7 @@ bool stabilizerTest(void)
   return pass;
 }
 
-static void checkEmergencyStopTimeout()
-{
+static void checkEmergencyStopTimeout() {
   if (emergencyStopTimeout >= 0) {
     emergencyStopTimeout -= 1;
 
@@ -233,8 +229,7 @@ static void checkEmergencyStopTimeout()
  * (ie. returning without modifying the output structure).
  */
 
-static void stabilizerTask(void* param)
-{
+static void stabilizerTask(void* param) {
   uint32_t tick;
   uint32_t lastWakeTime;
   vTaskSetApplicationTaskTag(0, (void*)TASK_STABILIZER_ID_NBR);

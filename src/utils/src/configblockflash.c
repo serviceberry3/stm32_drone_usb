@@ -53,31 +53,26 @@ static struct configblock_s *configblock;
 
 static bool cb_ok=false;
 
-static uint8_t calculate_cksum(void* data, size_t len)
-{
+static uint8_t calculate_cksum(void* data, size_t len) {
   unsigned char* c = data;
   int i;
   unsigned char cksum=0;
   
-  for (i=0; i<len; i++)
+  for (i = 0; i < len; i++)
     cksum += *(c++);
 
   return cksum;
 }
 
-int configblockInit(void)
-{
-  configblock = (void*)CONFIG_BLOCK_ADDRESS;
+int configblockInit(void) {
+  configblock = (void*) CONFIG_BLOCK_ADDRESS;
 
   //Verify the config block
-  if (configblock->magic!=MAGIC || configblock->version!= VERSION || 
-      calculate_cksum(configblock, sizeof(*configblock)) )
-  {
+  if (configblock->magic != MAGIC || configblock->version != VERSION || 
+      calculate_cksum(configblock, sizeof(*configblock))) {
     DEBUG_PRINT("Verification [FAIL]\n");
     return -1;
-  }
-  else
-  {
+  } else {
     DEBUG_PRINT("v%d, verification [OK]\n", configblock->version);
     cb_ok = true;
   }
@@ -86,38 +81,33 @@ int configblockInit(void)
   return 0;
 }
 
-bool configblockTest(void)
-{
+bool configblockTest(void) {
   return true;
 }
 
 /* Static accessors */
-int configblockGetRadioChannel(void)
-{
+int configblockGetRadioChannel(void) {
   if (cb_ok)
     return configblock->radioChannel;
   else
     return RADIO_CHANNEL;
 }
 
-int configblockGetRadioSpeed(void)
-{
+int configblockGetRadioSpeed(void) {
   if (cb_ok)
     return configblock->radioSpeed;
   else
     return RADIO_DATARATE;
 }
 
-float configblockGetCalibPitch(void)
-{
+float configblockGetCalibPitch(void) {
   if (cb_ok)
     return configblock->calibPitch;
   else
     return 0;
 }
 
-float configblockGetCalibRoll(void)
-{
+float configblockGetCalibRoll(void) {
   if (cb_ok)
     return configblock->calibRoll;
   else

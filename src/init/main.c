@@ -38,31 +38,32 @@
 #include "usec_time.h"
 
 #include "led.h"
+#include "debug.h"
 
 /* ST includes */
 #include "stm32fxxx.h"
 
 int main() {
-  //Initialize the platform.
+  // Initialize the platform.
   int err = platformInit();
   if (err != 0) {
     // The firmware is running on the wrong hardware. Halt
     while(1);
   }
 
-  //Launch the system task that will initialize and start everything
+  // Launch the system task that will initialize and start everything
   systemLaunch();
 
-  //Start the FreeRTOS scheduler
-  // vTaskStartScheduler();
+  // Start the FreeRTOS scheduler
+  vTaskStartScheduler();
 
-  //TODO: Move to platform launch failed
+  // TODO: Move to platform launch failed
 
   ledInit();
   ledSet(0, 1);
   ledSet(1, 1);
 
-  //Should never reach this point!
+  // Should never reach this point!
   while(1);
 
   return 0;
