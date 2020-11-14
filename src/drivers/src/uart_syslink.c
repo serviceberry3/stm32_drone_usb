@@ -113,8 +113,7 @@ void uartslkDmaInit(void)
   isUartDmaInitialized = true;
 }
 
-void uartslkInit(void)
-{
+void uartslkInit(void) {
   // initialize the FreeRTOS structures first, to prevent null pointers in interrupts
   waitUntilSendDone = xSemaphoreCreateBinaryStatic(&waitUntilSendDoneBuffer); // initialized as blocking
   uartBusy = xSemaphoreCreateBinaryStatic(&uartBusyBuffer); // initialized as blocking
@@ -133,16 +132,16 @@ void uartslkInit(void)
   ENABLE_UARTSLK_RCC(UARTSLK_PERIF, ENABLE);
 
   /* Configure USART Rx as input floating */
-  GPIO_InitStructure.GPIO_Pin   = UARTSLK_GPIO_RX_PIN;
-  GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AF;
+  GPIO_InitStructure.GPIO_Pin = UARTSLK_GPIO_RX_PIN;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
   GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
   GPIO_Init(UARTSLK_GPIO_PORT, &GPIO_InitStructure);
 
   /* Configure USART Tx as alternate function */
-  GPIO_InitStructure.GPIO_Pin   = UARTSLK_GPIO_TX_PIN;
+  GPIO_InitStructure.GPIO_Pin = UARTSLK_GPIO_TX_PIN;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_25MHz;
   GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-  GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AF;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
   GPIO_Init(UARTSLK_GPIO_PORT, &GPIO_InitStructure);
 
   //Map uartslk to alternate functions
@@ -196,35 +195,30 @@ void uartslkInit(void)
   isInit = true;
 }
 
-bool uartslkTest(void)
-{
+bool uartslkTest(void) {
   return isInit;
 }
 
-void uartslkGetPacketBlocking(SyslinkPacket* packet)
-{
+void uartslkGetPacketBlocking(SyslinkPacket* packet) {
   xQueueReceive(syslinkPacketDelivery, packet, portMAX_DELAY);
 }
 
-void uartslkSendData(uint32_t size, uint8_t* data)
-{
+void uartslkSendData(uint32_t size, uint8_t* data) {
   uint32_t i;
 
   if (!isInit)
     return;
 
-  for(i = 0; i < size; i++)
-  {
+  for (i = 0; i < size; i++) {
 #ifdef UARTSLK_SPINLOOP_FLOWCTRL
-    while(GPIO_ReadInputDataBit(UARTSLK_TXEN_PORT, UARTSLK_TXEN_PIN) == Bit_SET);
+    while (GPIO_ReadInputDataBit(UARTSLK_TXEN_PORT, UARTSLK_TXEN_PIN) == Bit_SET);
 #endif
     while (!(UARTSLK_TYPE->SR & USART_FLAG_TXE));
     UARTSLK_TYPE->DR = (data[i] & 0x00FF);
   }
 }
 
-void uartslkSendDataIsrBlocking(uint32_t size, uint8_t* data)
-{
+void uartslkSendDataIsrBlocking(uint32_t size, uint8_t* data) {
   xSemaphoreTake(uartBusy, portMAX_DELAY);
   outDataIsr = data;
   dataSizeIsr = size;
@@ -236,20 +230,17 @@ void uartslkSendDataIsrBlocking(uint32_t size, uint8_t* data)
   xSemaphoreGive(uartBusy);
 }
 
-int uartslkPutchar(int ch)
-{
+int uartslkPutchar(int ch) {
     uartslkSendData(1, (uint8_t *)&ch);
 
     return (unsigned char)ch;
 }
 
-void uartslkSendDataDmaBlocking(uint32_t size, uint8_t* data)
-{
-  if (isUartDmaInitialized)
-  {
+void uartslkSendDataDmaBlocking(uint32_t size, uint8_t* data) {
+  if (isUartDmaInitialized) {
     xSemaphoreTake(uartBusy, portMAX_DELAY);
     // Wait for DMA to be free
-    while(DMA_GetCmdStatus(UARTSLK_DMA_STREAM) != DISABLE);
+    while (DMA_GetCmdStatus(UARTSLK_DMA_STREAM) != DISABLE);
     //Copy data in DMA buffer
     memcpy(dmaBuffer, data, size);
     DMA_InitStructureShare.DMA_BufferSize = size;
@@ -269,16 +260,14 @@ void uartslkSendDataDmaBlocking(uint32_t size, uint8_t* data)
   }
 }
 
-static void uartslkPauseDma()
-{
-  if (DMA_GetCmdStatus(UARTSLK_DMA_STREAM) == ENABLE)
-  {
+static void uartslkPauseDma() {
+  if (DMA_GetCmdStatus(UARTSLK_DMA_STREAM) == ENABLE) {
     // Disable transfer complete interrupt
     DMA_ITConfig(UARTSLK_DMA_STREAM, DMA_IT_TC, DISABLE);
     // Disable stream to pause it
     DMA_Cmd(UARTSLK_DMA_STREAM, DISABLE);
     // Wait for it to be disabled
-    while(DMA_GetCmdStatus(UARTSLK_DMA_STREAM) != DISABLE);
+    while (DMA_GetCmdStatus(UARTSLK_DMA_STREAM) != DISABLE);
     // Disable transfer complete
     DMA_ClearITPendingBit(UARTSLK_DMA_STREAM, UARTSLK_DMA_FLAG_TCIF);
     // Read remaining data count
@@ -287,14 +276,12 @@ static void uartslkPauseDma()
   }
 }
 
-static void uartslkResumeDma()
-{
-  if (dmaIsPaused)
-  {
+static void uartslkResumeDma() {
+  if (dmaIsPaused) {
     // Update DMA counter
     DMA_SetCurrDataCounter(UARTSLK_DMA_STREAM, remainingDMACount);
     // Update memory read address
-    UARTSLK_DMA_STREAM->M0AR = (uint32_t)&dmaBuffer[initialDMACount - remainingDMACount];
+    UARTSLK_DMA_STREAM->M0AR = (uint32_t) &dmaBuffer[initialDMACount - remainingDMACount];
     // Enable the Transfer Complete interrupt
     DMA_ITConfig(UARTSLK_DMA_STREAM, DMA_IT_TC, ENABLE);
     /* Clear transfer complete */
@@ -305,8 +292,7 @@ static void uartslkResumeDma()
   }
 }
 
-void uartslkDmaIsr(void)
-{
+void uartslkDmaIsr(void) {
   portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 
   // Stop and cleanup DMA stream
@@ -319,10 +305,8 @@ void uartslkDmaIsr(void)
   xSemaphoreGiveFromISR(waitUntilSendDone, &xHigherPriorityTaskWoken);
 }
 
-void uartslkHandleDataFromISR(uint8_t c, BaseType_t * const pxHigherPriorityTaskWoken)
-{
-  switch (rxState)
-  {
+void uartslkHandleDataFromISR(uint8_t c, BaseType_t * const pxHigherPriorityTaskWoken) {
+  switch (rxState) {
   case waitForFirstStart:
     rxState = (c == SYSLINK_START_BYTE1) ? waitForSecondStart : waitForFirstStart;
     break;
@@ -336,16 +320,13 @@ void uartslkHandleDataFromISR(uint8_t c, BaseType_t * const pxHigherPriorityTask
     rxState = waitForLength;
     break;
   case waitForLength:
-    if (c <= SYSLINK_MTU)
-    {
+    if (c <= SYSLINK_MTU) {
       slp.length = c;
       cksum[0] += c;
       cksum[1] += cksum[0];
       dataIndex = 0;
       rxState = (c > 0) ? waitForData : waitForChksum1;
-    }
-    else
-    {
+    } else {
       rxState = waitForFirstStart;
     }
     break;
@@ -354,37 +335,27 @@ void uartslkHandleDataFromISR(uint8_t c, BaseType_t * const pxHigherPriorityTask
     cksum[0] += c;
     cksum[1] += cksum[0];
     dataIndex++;
-    if (dataIndex == slp.length)
-    {
+    if (dataIndex == slp.length) {
       rxState = waitForChksum1;
     }
     break;
   case waitForChksum1:
-    if (cksum[0] == c)
-    {
+    if (cksum[0] == c) {
       rxState = waitForChksum2;
-    }
-    else
-    {
+    } else {
       rxState = waitForFirstStart; //Checksum error
       IF_DEBUG_ASSERT(0);
     }
     break;
   case waitForChksum2:
-    if (cksum[1] == c)
-    {
+    if (cksum[1] == c) {
       // Post the packet to the queue if there's room
-      if (!xQueueIsQueueFullFromISR(syslinkPacketDelivery))
-      {
+      if (!xQueueIsQueueFullFromISR(syslinkPacketDelivery)) {
         xQueueSendFromISR(syslinkPacketDelivery, (void *)&slp, pxHigherPriorityTaskWoken);
-      }
-      else
-      {
+      } else {
         IF_DEBUG_ASSERT(0); // Queue overflow
       }
-    }
-    else
-    {
+    } else {
       rxState = waitForFirstStart; //Checksum error
       IF_DEBUG_ASSERT(0);
     }
@@ -396,34 +367,25 @@ void uartslkHandleDataFromISR(uint8_t c, BaseType_t * const pxHigherPriorityTask
   }
 }
 
-void uartslkIsr(void)
-{
+void uartslkIsr(void) {
   portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 
   // the following if statement replaces:
   //   if (USART_GetITStatus(UARTSLK_TYPE, USART_IT_RXNE) == SET)
   // we do this check as fast as possible to minimize the chance of an overrun,
   // which occasionally cause problems and cause packet loss at high CPU usage
-  if ((UARTSLK_TYPE->SR & (1<<5)) != 0) // if the RXNE interrupt has occurred
-  {
+  if ((UARTSLK_TYPE->SR & (1 << 5)) != 0) { // if the RXNE interrupt has occurred
     uint8_t rxDataInterrupt = (uint8_t)(UARTSLK_TYPE->DR & 0xFF);
     uartslkHandleDataFromISR(rxDataInterrupt, &xHigherPriorityTaskWoken);
-  }
-  else if (USART_GetITStatus(UARTSLK_TYPE, USART_IT_TXE) == SET)
-  {
-    if (outDataIsr && (dataIndexIsr < dataSizeIsr))
-    {
+  } else if (USART_GetITStatus(UARTSLK_TYPE, USART_IT_TXE) == SET) {
+    if (outDataIsr && (dataIndexIsr < dataSizeIsr)) {
       USART_SendData(UARTSLK_TYPE, outDataIsr[dataIndexIsr] & 0x00FF);
       dataIndexIsr++;
-    }
-    else
-    {
+    } else {
       USART_ITConfig(UARTSLK_TYPE, USART_IT_TXE, DISABLE);
       xSemaphoreGiveFromISR(waitUntilSendDone, &xHigherPriorityTaskWoken);
     }
-  }
-  else
-  {
+  } else {
     /** if we get here, the error is most likely caused by an overrun!
      * - PE (Parity error), FE (Framing error), NE (Noise error), ORE (OverRun error)
      * - and IDLE (Idle line detected) pending bits are cleared by software sequence:
@@ -436,32 +398,25 @@ void uartslkIsr(void)
   portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
-void uartslkTxenFlowctrlIsr()
-{
+void uartslkTxenFlowctrlIsr() {
   EXTI_ClearFlag(UARTSLK_TXEN_EXTI);
-  if (GPIO_ReadInputDataBit(UARTSLK_TXEN_PORT, UARTSLK_TXEN_PIN) == Bit_SET)
-  {
+  if (GPIO_ReadInputDataBit(UARTSLK_TXEN_PORT, UARTSLK_TXEN_PIN) == Bit_SET) {
     uartslkPauseDma();
     //ledSet(LED_GREEN_R, 1);
-  }
-  else
-  {
+  } else {
     uartslkResumeDma();
     //ledSet(LED_GREEN_R, 0);
   }
 }
 
-void __attribute__((used)) EXTI4_Callback(void)
-{
+void __attribute__((used)) EXTI4_Callback(void) {
   uartslkTxenFlowctrlIsr();
 }
 
-void __attribute__((used)) USART6_IRQHandler(void)
-{
+void __attribute__((used)) USART6_IRQHandler(void) {
   uartslkIsr();
 }
 
-void __attribute__((used)) DMA2_Stream7_IRQHandler(void)
-{
+void __attribute__((used)) DMA2_Stream7_IRQHandler(void) {
   uartslkDmaIsr();
 }

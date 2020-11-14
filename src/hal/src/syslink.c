@@ -59,11 +59,9 @@ STATIC_MEM_TASK_ALLOC_STACK_NO_DMA_CCM_SAFE(syslinkTask, SYSLINK_TASK_STACKSIZE)
 
 /* Syslink task, handles communication between nrf and stm and dispatch messages
  */
-static void syslinkTask(void *param)
-{
+static void syslinkTask(void *param) {
   SyslinkPacket slp;
-  while(1)
-  {
+  while (1) {
     uartslkGetPacketBlocking(&slp);
     syslinkRouteIncommingPacket(&slp);
   }
@@ -73,11 +71,9 @@ static void syslinkTask(void *param)
 
 STATIC_MEM_TASK_ALLOC(uart2Task, UART2_TASK_STACKSIZE);
 
-static void uart2Task(void *param)
-{
+static void uart2Task(void *param) {
   SyslinkPacket slp;
-  while(1)
-  {
+  while (1) {
     uart2GetPacketBlocking(&slp);
     syslinkRouteIncommingPacket(&slp);
   }
@@ -85,14 +81,12 @@ static void uart2Task(void *param)
 
 #endif
 
-static void syslinkRouteIncommingPacket(SyslinkPacket *slp)
-{
+static void syslinkRouteIncommingPacket(SyslinkPacket *slp) {
   uint8_t groupType;
 
   groupType = slp->type & SYSLINK_GROUP_MASK;
 
-  switch (groupType)
-  {
+  switch (groupType) {
     case SYSLINK_RADIO_GROUP:
       radiolinkSyslinkDispatch(slp);
       break;
@@ -112,9 +106,8 @@ static void syslinkRouteIncommingPacket(SyslinkPacket *slp)
  * Public functions
  */
 
-void syslinkInit()
-{
-  if(isInit) {
+void syslinkInit() {
+  if (isInit) {
     return;
   }
 
@@ -130,13 +123,11 @@ void syslinkInit()
   isInit = true;
 }
 
-bool syslinkTest()
-{
+bool syslinkTest() {
   return isInit;
 }
 
-int syslinkSendPacket(SyslinkPacket *slp)
-{
+int syslinkSendPacket(SyslinkPacket *slp) {
   int i = 0;
   int dataSize;
   uint8_t cksum[2] = {0};
@@ -153,8 +144,7 @@ int syslinkSendPacket(SyslinkPacket *slp)
   memcpy(&sendBuffer[4], slp->data, slp->length);
   dataSize = slp->length + 6;
   // Calculate checksum delux
-  for (i = 2; i < dataSize - 2; i++)
-  {
+  for (i = 2; i < dataSize - 2; i++) {
     cksum[0] += sendBuffer[i];
     cksum[1] += cksum[0];
   }
@@ -164,20 +154,19 @@ int syslinkSendPacket(SyslinkPacket *slp)
   #ifdef UART2_LINK_COMM
   uint8_t groupType;
   groupType = slp->type & SYSLINK_GROUP_MASK;
-  switch (groupType)
-  {
-  case SYSLINK_RADIO_GROUP:
-    uart2SendDataDmaBlocking(dataSize, sendBuffer);
-    break;
-  case SYSLINK_PM_GROUP:
-    uartslkSendDataDmaBlocking(dataSize, sendBuffer);
-    break;
-  case SYSLINK_OW_GROUP:
-    uartslkSendDataDmaBlocking(dataSize, sendBuffer);
-    break;
-  default:
-    DEBUG_PRINT("Unknown packet:%X.\n", slp->type);
-    break;
+  switch (groupType) {
+    case SYSLINK_RADIO_GROUP:
+      uart2SendDataDmaBlocking(dataSize, sendBuffer);
+      break;
+    case SYSLINK_PM_GROUP:
+      uartslkSendDataDmaBlocking(dataSize, sendBuffer);
+      break;
+    case SYSLINK_OW_GROUP:
+      uartslkSendDataDmaBlocking(dataSize, sendBuffer);
+      break;
+    default:
+      DEBUG_PRINT("Unknown packet:%X.\n", slp->type);
+      break;
   }
   #else
   uartslkSendDataDmaBlocking(dataSize, sendBuffer);

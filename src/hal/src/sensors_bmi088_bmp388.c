@@ -86,8 +86,7 @@
 
 #define SENSORS_ACC_SCALE_SAMPLES  200
 
-typedef struct
-{
+typedef struct {
   Axis3f     bias;
   Axis3f     variance;
   Axis3f     mean;

@@ -47,7 +47,7 @@ void commInit(void) {
   if (isInit)
     return;
 
-  uartslkInit();
+  uartslkInit(); // uart connected with nrf
   radiolinkInit();
 
   /* These functions are moved to be initialized early so

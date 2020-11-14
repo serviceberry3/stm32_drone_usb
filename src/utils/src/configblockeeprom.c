@@ -84,7 +84,7 @@ static configblock_t configblockDefault = {
     .radioSpeed = RADIO_DATARATE,
     .calibPitch = 0.0,
     .calibRoll = 0.0,
-    .radioAddress_upper = ((uint64_t)RADIO_ADDRESS >> 32),
+    .radioAddress_upper = ((uint64_t) RADIO_ADDRESS >> 32),
     .radioAddress_lower = (RADIO_ADDRESS & 0xFFFFFFFFULL),
 };
 
@@ -115,14 +115,11 @@ static uint8_t calculate_cksum(void* data, size_t len) {
 }
 
 int configblockInit(void) {
-  DEBUG_PRINT("ENTER CONFIGBLOCKINIT\n");
   if (isInit)
     return 0;
 
   i2cdevInit(I2C1_DEV);
-  DEBUG_PRINT("I2C init done\n");
   eepromInit(I2C1_DEV);
-  DEBUG_PRINT("eep init done\n");
 
   // Because of strange behavior from I2C device during expansion port test
   // the first read needs to be discarded

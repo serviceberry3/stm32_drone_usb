@@ -349,8 +349,7 @@ static void kalmanTask(void* parameters) {
     // Accumulate the barometer measurements
     if (useBaroUpdate) {
       if (osTick > nextBaroUpdate // update at BARO_RATE
-          && baroAccumulatorCount > 0)
-      {
+          && baroAccumulatorCount > 0) {
         xSemaphoreTake(dataMutex, portMAX_DELAY);
         float baroAslAverage = baroAslAccumulator / baroAccumulatorCount;
         baroAslAccumulator = 0;
@@ -381,8 +380,7 @@ static void kalmanTask(void* parameters) {
      * - correctness of the covariance matrix is ensured
      */
 
-    if (doneUpdate)
-    {
+    if (doneUpdate) {
       kalmanCoreFinalize(&coreData, osTick);
       STATS_CNT_RATE_EVENT(&finalizeCounter);
       if (! kalmanSupervisorIsStateWithinBounds(&coreData)) {
@@ -407,8 +405,7 @@ static void kalmanTask(void* parameters) {
   }
 }
 
-void estimatorKalman(state_t *state, sensorData_t *sensors, control_t *control, const uint32_t tick)
-{
+void estimatorKalman(state_t *state, sensorData_t *sensors, control_t *control, const uint32_t tick) {
   // This function is called from the stabilizer loop. It is important that this call returns
   // as quickly as possible. The dataMutex must only be locked short periods by the task.
   xSemaphoreTake(dataMutex, portMAX_DELAY);

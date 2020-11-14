@@ -129,23 +129,12 @@ void systemInit(void) {
               *((int*)(MCU_ID_ADDRESS + 0)), *((short*)(MCU_FLASH_SIZE_ADDRESS)));
 
   configblockInit();
-
-  systemStart();
-  workerLoop();
-  // Should never reach this point!
-  while (1)
-    vTaskDelay(portMAX_DELAY);
-
-
   workerInit();
   adcInit();
   ledseqInit();
   pmInit();
-  buzzerInit();
-  peerLocalizationInit();
-
-
-  
+  // buzzerInit(); // this does nothing
+  // peerLocalizationInit(); // this does nothing
 
 #ifdef APP_ENABLED
   appInit();
@@ -190,9 +179,20 @@ void systemTask(void *arg) {
 
   StateEstimatorType estimator = anyEstimator;
   estimatorKalmanTaskInit();
-  deckInit();
+  deckInit(); // remain to be tested
   estimator = deckGetRequiredEstimator();
   stabilizerInit(estimator);
+
+  DEBUG_PRINT("after sensor init\n");
+  systemStart();
+  workerLoop();
+  while (1)
+    vTaskDelay(portMAX_DELAY);
+
+
+  
+  
+  
   if (deckGetRequiredLowInterferenceRadioMode() && platformConfigPhysicalLayoutAntennasAreClose()) {
     platformSetLowInterferenceRadioMode();
   }
@@ -260,9 +260,9 @@ void systemStart() {
 }
 
 void systemWaitStart(void) {
-  //This permits to guarantee that the system task is initialized before other
-  //tasks waits for the start event.
-  while(!isInit)
+  // This permits to guarantee that the system task is initialized before other
+  // tasks waits for the start event.
+  while (!isInit)
     vTaskDelay(2);
 
   xSemaphoreTake(canStartMutex, portMAX_DELAY);

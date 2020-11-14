@@ -60,19 +60,16 @@
 
 /******** Types ********/
 
-typedef struct __attribute__((packed))
-{
+typedef struct __attribute__((packed)) {
   uint16_t vref;
   uint16_t val;
 } AdcPair;
 
-typedef struct __attribute__((packed))
-{
+typedef struct __attribute__((packed)) {
   AdcPair vbat;
 } AdcGroup;
 
-typedef struct
-{
+typedef struct {
   uint16_t vbat;
   uint16_t vbatVref;
 } AdcDeciGroup;

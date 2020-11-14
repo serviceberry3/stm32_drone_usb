@@ -63,8 +63,7 @@ static bool requiredLowInterferenceRadioMode = false;
 
 static char* deck_force = xstr(DECK_FORCE);
 
-void deckInfoInit()
-{
+void deckInfoInit() {
   static bool isInit = false;
 
   if (isInit) return;
@@ -76,14 +75,12 @@ void deckInfoInit()
   isInit = true;
 }
 
-int deckCount(void)
-{
+int deckCount(void) {
   return count;
 }
 
-DeckInfo * deckInfo(int i)
-{
-  if (i<count) {
+DeckInfo * deckInfo(int i) {
+  if (i < count) {
     return &deckInfos[i];
   }
 
@@ -94,8 +91,7 @@ DeckInfo * deckInfo(int i)
 static const DeckDriver dummyDriver;
 
 #ifndef IGNORE_OW_DECKS
-static const DeckDriver * findDriver(DeckInfo *deck)
-{
+static const DeckDriver * findDriver(DeckInfo *deck) {
   char name[30];
   const DeckDriver *driver = &dummyDriver;
 
@@ -103,7 +99,7 @@ static const DeckDriver * findDriver(DeckInfo *deck)
 
   if (deck->vid) {
     driver = deckFindDriverByVidPid(deck->vid, deck->pid);
-  } else if (strlen(name)>0) {
+  } else if (strlen(name) > 0) {
     driver = deckFindDriverByName(name);
   }
 
@@ -114,8 +110,7 @@ static const DeckDriver * findDriver(DeckInfo *deck)
 }
 #endif
 
-void printDeckInfo(DeckInfo *info)
-{
+void printDeckInfo(DeckInfo *info) {
   char name[30] = "NoName";
   char rev[10] = "NoRev";
 
@@ -139,8 +134,7 @@ void printDeckInfo(DeckInfo *info)
 }
 
 #ifndef IGNORE_OW_DECKS
-static bool infoDecode(DeckInfo * info)
-{
+static bool infoDecode(DeckInfo * info) {
   uint8_t crcHeader;
   uint8_t crcTlv;
 
@@ -174,15 +168,13 @@ static bool infoDecode(DeckInfo * info)
 }
 #endif
 
-static void enumerateDecks(void)
-{
+static void enumerateDecks(void) {
   uint8_t nDecks = 0;
   bool noError = true;
 
   owInit();
 
-  if (owScan(&nDecks))
-  {
+  if (owScan(&nDecks)) {
     DECK_INFO_DBG_PRINT("Found %d deck memor%s.\n", nDecks, nDecks>1?"ies":"y");
   } else {
     DEBUG_PRINT("Error scanning for deck memories, "
@@ -191,13 +183,10 @@ static void enumerateDecks(void)
   }
 
 #ifndef IGNORE_OW_DECKS
-  for (int i = 0; i < nDecks; i++)
-  {
+  for (int i = 0; i < nDecks; i++) {
     DECK_INFO_DBG_PRINT("Enumerating deck %i\n", i);
-    if (owRead(i, 0, sizeof(deckInfos[0].raw), (uint8_t *)&deckInfos[i]))
-    {
-      if (infoDecode(&deckInfos[i]))
-      {
+    if (owRead(i, 0, sizeof(deckInfos[0].raw), (uint8_t *)&deckInfos[i])) {
+      if (infoDecode(&deckInfos[i])) {
         deckInfos[i].driver = findDriver(&deckInfos[i]);
         printDeckInfo(&deckInfos[i]);
       } else {
@@ -211,9 +200,7 @@ static void enumerateDecks(void)
         noError = false;
 #endif
       }
-    }
-    else
-    {
+    } else {
       DEBUG_PRINT("Reading deck nr:%d [FAILED]. "
                   "No driver will be initialized!\n", i);
       noError = false;
@@ -261,14 +248,12 @@ static void enumerateDecks(void)
   return;
 }
 
-static void checkPeriphAndGpioConflicts(void)
-{
+static void checkPeriphAndGpioConflicts(void) {
   bool noError = true;
   uint32_t usedPeriph = 0;
   uint32_t usedGpio = 0;
 
-  for (int i = 0; i < count; i++)
-  {
+  for (int i = 0; i < count; i++) {
     if (usedPeriph & deckInfos[i].driver->usedPeriph) {
       DEBUG_PRINT("ERROR: Driver Periph usage conflicts with a "
                   "previously enumerated deck driver. No decks will be "
@@ -347,12 +332,10 @@ void deckTlvGetTlv(TlvArea *tlv, int type, TlvArea *output) {
   output->data = (uint8_t *)deckTlvGetBuffer(tlv, type, &output->length);
 }
 
-static void scanRequiredSystemProperties(void)
-{
+static void scanRequiredSystemProperties(void) {
   bool isError = false;
 
-  for (int i = 0; i < count; i++)
-  {
+  for (int i = 0; i < count; i++) {
     isError = isError || registerRequiredEstimator(deckInfos[i].driver->requiredEstimator);
     requiredLowInterferenceRadioMode |= deckInfos[i].driver->requiredLowInterferenceRadioMode;
   }
@@ -362,18 +345,13 @@ static void scanRequiredSystemProperties(void)
   }
 }
 
-static bool registerRequiredEstimator(StateEstimatorType estimator)
-{
+static bool registerRequiredEstimator(StateEstimatorType estimator) {
   bool isError = false;
 
-  if (anyEstimator != estimator)
-  {
-    if (anyEstimator == requiredEstimator)
-    {
+  if (anyEstimator != estimator) {
+    if (anyEstimator == requiredEstimator) {
       requiredEstimator = estimator;
-    }
-    else
-    {
+    } else {
       if (requiredEstimator != estimator) {
         isError = true;
         DEBUG_PRINT("WARNING: Two decks require different estimators\n");
@@ -384,12 +362,10 @@ static bool registerRequiredEstimator(StateEstimatorType estimator)
   return isError;
 }
 
-StateEstimatorType deckGetRequiredEstimator()
-{
+StateEstimatorType deckGetRequiredEstimator() {
   return requiredEstimator;
 }
 
-bool deckGetRequiredLowInterferenceRadioMode()
-{
+bool deckGetRequiredLowInterferenceRadioMode() {
   return requiredLowInterferenceRadioMode;
 }

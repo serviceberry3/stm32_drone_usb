@@ -142,21 +142,21 @@ static const sensorsImplementation_t sensorImplementations[SensorImplementation_
     .dataAvailableCallback = nullFunction,
   },
 #endif
-#ifdef SENSOR_INCLUDED_BMI270_BMP388
+#ifdef SENSOR_INCLUDED_BMI270_SPI_BMP388
   {
-    .implements = SensorImplementation_bmi270_bmp388,
-    .init = sensorsBmi088Bmp388Init,
-    .test = sensorsBmi088Bmp388Test,
-    .areCalibrated = sensorsBmi088Bmp388AreCalibrated,
-    .manufacturingTest = sensorsBmi088Bmp388ManufacturingTest,
-    .acquire = sensorsBmi088Bmp388Acquire,
-    .waitDataReady = sensorsBmi088Bmp388WaitDataReady,
-    .readGyro = sensorsBmi088Bmp388ReadGyro,
-    .readAcc = sensorsBmi088Bmp388ReadAcc,
-    .readMag = sensorsBmi088Bmp388ReadMag,
-    .readBaro = sensorsBmi088Bmp388ReadBaro,
-    .setAccMode = sensorsBmi088Bmp388SetAccMode,
-    .dataAvailableCallback = sensorsBmi088Bmp388DataAvailableCallback,
+    .implements = SensorImplementation_bmi270_spi_bmp388,
+    .init = sensorsBmi270SpiBmp388Init,
+    .test = sensorsBmi270SpiBmp388Test,
+    .areCalibrated = sensorsBmi270SpiBmp388AreCalibrated,
+    .manufacturingTest = sensorsBmi270SpiBmp388ManufacturingTest,
+    .acquire = sensorsBmi270SpiBmp388Acquire,
+    .waitDataReady = sensorsBmi270SpiBmp388WaitDataReady,
+    .readGyro = sensorsBmi270SpiBmp388ReadGyro,
+    .readAcc = sensorsBmi270SpiBmp388ReadAcc,
+    .readMag = sensorsBmi270SpiBmp388ReadMag,
+    .readBaro = sensorsBmi270SpiBmp388ReadBaro,
+    .setAccMode = sensorsBmi270SpiBmp388SetAccMode,
+    .dataAvailableCallback = sensorsBmi270SpiBmp388DataAvailableCallback,
   },
 #endif
   

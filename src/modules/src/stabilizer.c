@@ -185,10 +185,14 @@ static void compressSetpoint() {
 }
 
 void stabilizerInit(StateEstimatorType estimator) {
-  if(isInit)
+  if (isInit) {
     return;
+  }
 
   sensorsInit();
+  
+  return;
+  
   stateEstimatorInit(estimator);
   controllerInit(ControllerTypeAny);
   powerDistributionInit();

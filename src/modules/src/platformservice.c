@@ -38,29 +38,28 @@
 #include "version.h"
 #include "platform.h"
 
-static bool isInit=false;
+static bool isInit = false;
 
 typedef enum {
-  platformCommand   = 0x00,
-  versionCommand    = 0x01,
+  platformCommand = 0x00,
+  versionCommand = 0x01,
 } Channel;
 
 typedef enum {
-  setContinousWave   = 0x00,
+  setContinousWave = 0x00,
 } PlatformCommand;
 
 typedef enum {
   getProtocolVersion = 0x00,
   getFirmwareVersion = 0x01,
-  getDeviceTypeName  = 0x02,
+  getDeviceTypeName = 0x02,
 } VersionCommand;
 
 void platformserviceHandler(CRTPPacket *p);
 static void platformCommandProcess(uint8_t command, uint8_t *data);
 static void versionCommandProcess(CRTPPacket *p);
 
-void platformserviceInit(void)
-{
+void platformserviceInit(void) {
   if (isInit)
     return;
 
@@ -70,15 +69,12 @@ void platformserviceInit(void)
   isInit = true;
 }
 
-bool platformserviceTest(void)
-{
+bool platformserviceTest(void) {
   return isInit;
 }
 
-void platformserviceHandler(CRTPPacket *p)
-{
-  switch (p->channel)
-  {
+void platformserviceHandler(CRTPPacket *p) {
+  switch (p->channel) {
     case platformCommand:
       platformCommandProcess(p->data[0], &p->data[1]);
       crtpSendPacket(p);
@@ -90,8 +86,7 @@ void platformserviceHandler(CRTPPacket *p)
   }
 }
 
-static void platformCommandProcess(uint8_t command, uint8_t *data)
-{
+static void platformCommandProcess(uint8_t command, uint8_t *data) {
   SyslinkPacket slp;
 
   switch (command) {
@@ -106,11 +101,10 @@ static void platformCommandProcess(uint8_t command, uint8_t *data)
   }
 }
 
-static void versionCommandProcess(CRTPPacket *p)
-{
+static void versionCommandProcess(CRTPPacket *p) {
   switch (p->data[0]) {
     case getProtocolVersion:
-      *(int*)&p->data[1] = PROTOCOL_VERSION;
+      *(int*) &p->data[1] = PROTOCOL_VERSION;
       p->size = 5;
       crtpSendPacket(p);
       break;
@@ -121,10 +115,10 @@ static void versionCommandProcess(CRTPPacket *p)
       break;
     case getDeviceTypeName:
       {
-      const char* name = platformConfigGetDeviceTypeName();
-      strncpy((char*)&p->data[1], name, CRTP_MAX_DATA_SIZE-1);
-      p->size = (strlen(name)>CRTP_MAX_DATA_SIZE-1)?CRTP_MAX_DATA_SIZE:strlen(name)+1;
-      crtpSendPacket(p);
+        const char* name = platformConfigGetDeviceTypeName();
+        strncpy((char*)&p->data[1], name, CRTP_MAX_DATA_SIZE-1);
+        p->size = (strlen(name)>CRTP_MAX_DATA_SIZE-1)?CRTP_MAX_DATA_SIZE:strlen(name)+1;
+        crtpSendPacket(p);
       }
       break;
     default:

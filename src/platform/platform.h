@@ -49,8 +49,8 @@ typedef enum {
   SensorImplementation_bosch,
   #endif
 
-  #ifdef SENSOR_INCLUDED_BMI270_BMP388
-  SensorImplementation_bmi270_bmp388,
+  #ifdef SENSOR_INCLUDED_BMI270_SPI_BMP388
+  SensorImplementation_bmi270_spi_bmp388,
   #endif
 
   SensorImplementation_COUNT,

@@ -31,8 +31,7 @@
 static  uint32_t  stregResolution;
 static  uint32_t  adcRange;
 
-void adcInit(void)
-{
+void adcInit(void) {
   /*
    * Note: This function initializes only ADC2, and only for single channel, single conversion mode. No DMA, no interrupts, no bells or whistles.
    */
@@ -65,8 +64,7 @@ void adcInit(void)
   ADC_Cmd(ADC2, ENABLE);
 }
 
-static uint16_t analogReadChannel(uint8_t channel)
-{
+static uint16_t analogReadChannel(uint8_t channel) {
   /* According to datasheet, minimum sampling time for 12-bit conversion is 15 cycles. */
   ADC_RegularChannelConfig(ADC2, channel, 1, ADC_SampleTime_15Cycles);
 
@@ -80,8 +78,7 @@ static uint16_t analogReadChannel(uint8_t channel)
   return ADC_GetConversionValue(ADC2);
 }
 
-uint16_t analogRead(const deckPin_t pin)
-{
+uint16_t analogRead(const deckPin_t pin) {
   assert_param(deckGPIOMapping[pin.id].adcCh > -1);
 
   /* Now set the GPIO pin to analog mode. */
@@ -106,8 +103,7 @@ uint16_t analogRead(const deckPin_t pin)
   return analogReadChannel((uint8_t)deckGPIOMapping[pin.id].adcCh);
 }
 
-void analogReference(uint8_t type)
-{
+void analogReference(uint8_t type) {
   /*
    * TODO: We should probably support the Arduino EXTERNAL type here.
    * TODO: Figure out which voltage reference to compensate with.
@@ -115,15 +111,13 @@ void analogReference(uint8_t type)
   assert_param(type == 0 /* DEFAULT */);
 }
 
-void analogReadResolution(uint8_t bits)
-{
+void analogReadResolution(uint8_t bits) {
   ADC_InitTypeDef       ADC_InitStructure;
 
   assert_param((bits >= 6) && (bits <= 12));
 
   adcRange = 1 << bits;
-  switch (bits)
-  {
+  switch (bits) {
     case 12: stregResolution = ADC_Resolution_12b; break;
     case 10: stregResolution = ADC_Resolution_10b; break;
     case 8:  stregResolution = ADC_Resolution_8b; break;
@@ -142,8 +136,7 @@ void analogReadResolution(uint8_t bits)
   ADC_Init(ADC2, &ADC_InitStructure);
 }
 
-float analogReadVoltage(const deckPin_t pin)
-{
+float analogReadVoltage(const deckPin_t pin) {
   float voltage;
 
   voltage = analogRead(pin) * VREF / adcRange;

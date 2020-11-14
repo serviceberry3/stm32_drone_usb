@@ -55,10 +55,8 @@ static bool isInit;
 #ifdef BQ_DECK_ENABLE_OSD
 static MspObject s_MspObject;
 
-static void osdTask(void *param)
-{
-  while(1)
-  {
+static void osdTask(void *param) {
+  while(1) {
     char ch;
     uart1Getchar(&ch);
 
@@ -66,8 +64,7 @@ static void osdTask(void *param)
   }
 }
 
-static void osdResponseCallback(uint8_t* pBuffer, uint32_t bufferLen)
-{
+static void osdResponseCallback(uint8_t* pBuffer, uint32_t bufferLen) {
   uart1SendData(bufferLen, pBuffer);
 }
 #endif // BQ_DECK_ENABLE_OSD

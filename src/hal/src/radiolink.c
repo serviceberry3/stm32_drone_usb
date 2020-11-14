@@ -73,16 +73,14 @@ static bool radiolinkIsConnected(void) {
   return (xTaskGetTickCount() - lastPacketTick) < M2T(RADIO_ACTIVITY_TIMEOUT_MS);
 }
 
-static struct crtpLinkOperations radiolinkOp =
-{
+static struct crtpLinkOperations radiolinkOp = {
   .setEnable         = radiolinkSetEnable,
   .sendPacket        = radiolinkSendCRTPPacket,
   .receivePacket     = radiolinkReceiveCRTPPacket,
   .isConnected       = radiolinkIsConnected
 };
 
-void radiolinkInit(void)
-{
+void radiolinkInit(void) {
   if (isInit)
     return;
 
@@ -102,13 +100,11 @@ void radiolinkInit(void)
   isInit = true;
 }
 
-bool radiolinkTest(void)
-{
+bool radiolinkTest(void) {
   return syslinkTest();
 }
 
-void radiolinkSetChannel(uint8_t channel)
-{
+void radiolinkSetChannel(uint8_t channel) {
   SyslinkPacket slp;
 
   slp.type = SYSLINK_RADIO_CHANNEL;
@@ -117,8 +113,7 @@ void radiolinkSetChannel(uint8_t channel)
   syslinkSendPacket(&slp);
 }
 
-void radiolinkSetDatarate(uint8_t datarate)
-{
+void radiolinkSetDatarate(uint8_t datarate) {
   SyslinkPacket slp;
 
   slp.type = SYSLINK_RADIO_DATARATE;
@@ -127,8 +122,7 @@ void radiolinkSetDatarate(uint8_t datarate)
   syslinkSendPacket(&slp);
 }
 
-void radiolinkSetAddress(uint64_t address)
-{
+void radiolinkSetAddress(uint64_t address) {
   SyslinkPacket slp;
 
   slp.type = SYSLINK_RADIO_ADDRESS;
@@ -137,8 +131,7 @@ void radiolinkSetAddress(uint64_t address)
   syslinkSendPacket(&slp);
 }
 
-void radiolinkSetPowerDbm(int8_t powerDbm)
-{
+void radiolinkSetPowerDbm(int8_t powerDbm) {
   SyslinkPacket slp;
 
   slp.type = SYSLINK_RADIO_POWER;
@@ -148,42 +141,36 @@ void radiolinkSetPowerDbm(int8_t powerDbm)
 }
 
 
-void radiolinkSyslinkDispatch(SyslinkPacket *slp)
-{
+void radiolinkSyslinkDispatch(SyslinkPacket *slp) {
   static SyslinkPacket txPacket;
 
   if (slp->type == SYSLINK_RADIO_RAW || slp->type == SYSLINK_RADIO_RAW_BROADCAST) {
     lastPacketTick = xTaskGetTickCount();
   }
 
-  if (slp->type == SYSLINK_RADIO_RAW)
-  {
+  if (slp->type == SYSLINK_RADIO_RAW) {
     slp->length--; // Decrease to get CRTP size.
     xQueueSend(crtpPacketDelivery, &slp->length, 0);
     ledseqRun(&seq_linkUp);
     // If a radio packet is received, one can be sent
-    if (xQueueReceive(txQueue, &txPacket, 0) == pdTRUE)
-    {
+    if (xQueueReceive(txQueue, &txPacket, 0) == pdTRUE) {
       ledseqRun(&seq_linkDown);
       syslinkSendPacket(&txPacket);
     }
-  } else if (slp->type == SYSLINK_RADIO_RAW_BROADCAST)
-  {
+  } else if (slp->type == SYSLINK_RADIO_RAW_BROADCAST) {
     slp->length--; // Decrease to get CRTP size.
     xQueueSend(crtpPacketDelivery, &slp->length, 0);
     ledseqRun(&seq_linkUp);
     // no ack for broadcasts
-  } else if (slp->type == SYSLINK_RADIO_RSSI)
-  {
+  } else if (slp->type == SYSLINK_RADIO_RSSI) {
     //Extract RSSI sample sent from radio
     memcpy(&rssi, slp->data, sizeof(uint8_t)); //rssi will not change on disconnect
-  } else if (slp->type == SYSLINK_RADIO_P2P_BROADCAST)
-  {
+  } else if (slp->type == SYSLINK_RADIO_P2P_BROADCAST) {
     ledseqRun(&seq_linkUp);
     P2PPacket p2pp;
     p2pp.port=slp->data[0];
     p2pp.rssi = slp->data[1];
-    memcpy(&p2pp.data[0], &slp->data[2],slp->length-2);
+    memcpy(&p2pp.data[0], &slp->data[2], slp->length - 2);
     p2pp.size=slp->length;
     if (p2p_callback)
         p2p_callback(&p2pp);
@@ -192,23 +179,19 @@ void radiolinkSyslinkDispatch(SyslinkPacket *slp)
   isConnected = radiolinkIsConnected();
 }
 
-static int radiolinkReceiveCRTPPacket(CRTPPacket *p)
-{
-  if (xQueueReceive(crtpPacketDelivery, p, M2T(100)) == pdTRUE)
-  {
+static int radiolinkReceiveCRTPPacket(CRTPPacket *p) {
+  if (xQueueReceive(crtpPacketDelivery, p, M2T(100)) == pdTRUE) {
     return 0;
   }
 
   return -1;
 }
 
-void p2pRegisterCB(P2PCallback cb)
-{
+void p2pRegisterCB(P2PCallback cb) {
     p2p_callback = cb;
 }
 
-static int radiolinkSendCRTPPacket(CRTPPacket *p)
-{
+static int radiolinkSendCRTPPacket(CRTPPacket *p) {
   static SyslinkPacket slp;
 
   ASSERT(p->size <= CRTP_MAX_DATA_SIZE);
@@ -217,16 +200,14 @@ static int radiolinkSendCRTPPacket(CRTPPacket *p)
   slp.length = p->size + 1;
   memcpy(slp.data, &p->header, p->size + 1);
 
-  if (xQueueSend(txQueue, &slp, M2T(100)) == pdTRUE)
-  {
+  if (xQueueSend(txQueue, &slp, M2T(100)) == pdTRUE) {
     return true;
   }
 
   return false;
 }
 
-bool radiolinkSendP2PPacketBroadcast(P2PPacket *p)
-{
+bool radiolinkSendP2PPacketBroadcast(P2PPacket *p) {
   static SyslinkPacket slp;
 
   ASSERT(p->size <= P2P_MAX_DATA_SIZE);
@@ -242,13 +223,11 @@ bool radiolinkSendP2PPacketBroadcast(P2PPacket *p)
 }
 
 
-struct crtpLinkOperations * radiolinkGetLink()
-{
+struct crtpLinkOperations * radiolinkGetLink() {
   return &radiolinkOp;
 }
 
-static int radiolinkSetEnable(bool enable)
-{
+static int radiolinkSetEnable(bool enable) {
   return 0;
 }
 

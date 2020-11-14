@@ -209,13 +209,13 @@ void ledseqInit() {
   ledseqRegisterSequence(&seq_linkUp);
   ledseqRegisterSequence(&seq_linkDown);
 
-  //Initialise the sequences state
-  for(int i=0; i<LED_NUM; i++) {
+  // Initialise the sequences state
+  for (int i = 0; i < LED_NUM; i++) {
     activeSeq[i] = 0;
   }
 
-  //Init the soft timers that runs the led sequences for each leds
-  for(int i=0; i<LED_NUM; i++) {
+  // Init the soft timers that runs the led sequences for each leds
+  for (int i = 0; i < LED_NUM; i++) {
     timer[i] = xTimerCreateStatic("ledseqTimer", M2T(1000), pdFALSE, (void*)i, runLedseq, &timerBuffer[i]);
   }
 

@@ -78,8 +78,7 @@
 #define PM_BAT_IIR_LPF_ATTENUATION (int)(ADC_SAMPLING_FREQ / (int)(2 * 3.1415f * PM_BAT_WANTED_LPF_CUTOFF_HZ))
 #define PM_BAT_IIR_LPF_ATT_FACTOR  (int)((1<<PM_BAT_IIR_SHIFT) / PM_BAT_IIR_LPF_ATTENUATION)
 
-typedef enum
-{
+typedef enum {
   battery,
   charging,
   charged,
@@ -87,15 +86,13 @@ typedef enum
   shutDown,
 } PMStates;
 
-typedef enum
-{
+typedef enum {
   charge100mA,
   charge500mA,
   chargeMax,
 } PMChargeStates;
 
-typedef enum
-{
+typedef enum {
   USBNone,
   USB500mA,
   USBWallAdapter,

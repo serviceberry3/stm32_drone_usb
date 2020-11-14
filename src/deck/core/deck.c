@@ -39,8 +39,7 @@
 
 extern void deckInfoInit();
 
-void deckInit()
-{
+void deckInit() {
   deckDriverCount();
   deckInfoInit();
 
@@ -51,7 +50,7 @@ void deckInit()
 
   DEBUG_PRINT("%d deck(s) found\n", nDecks);
 
-  for (i=0; i<nDecks; i++) {
+  for (i = 0; i < nDecks; i++) {
     DeckInfo *deck = deckInfo(i);
 
     if (deck->driver->init) {
@@ -66,8 +65,7 @@ void deckInit()
   }
 }
 
-bool deckTest()
-{
+bool deckTest() {
   bool pass = true;
   int nDecks;
   int i;

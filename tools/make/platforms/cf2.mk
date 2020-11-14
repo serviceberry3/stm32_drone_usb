@@ -20,8 +20,8 @@ PROJ_OBJ += sensors_mpu9250_lps25h.o
 CFLAGS += -DSENSOR_INCLUDED_BMI088_SPI_BMP388
 PROJ_OBJ += sensors_bmi088_spi_bmp388.o
 # should be bmi270_bmp388
-CFLAGS += -DSENSOR_INCLUDED_BMI270_BMP388
-# PROJ_OBJ += sensors_bmi088_bmp388.o
+CFLAGS += -DSENSOR_INCLUDED_BMI270_SPI_BMP388
+PROJ_OBJ += sensors_bmi270_spi_bmp388.o
 
 ######### Stabilizer configuration ##########
 ESTIMATOR          ?= any

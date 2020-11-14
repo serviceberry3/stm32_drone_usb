@@ -65,7 +65,7 @@ static platformConfig_t configs[] = {
   {
     .deviceType = "F407",
     .deviceTypeName = "Crazyflie F407",
-    .sensorImplementation = SensorImplementation_bmi270_bmp388,
+    .sensorImplementation = SensorImplementation_bmi270_spi_bmp388,
     .physicalLayoutAntennasAreClose = false,
     .motorMap = motorMapDefaultBrushed,
   }
