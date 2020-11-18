@@ -48,6 +48,7 @@ static platformConfig_t configs[] = {
     .physicalLayoutAntennasAreClose = false,
     .motorMap = motorMapDefaultBrushed,
   },
+  #ifdef SENSOR_INCLUDED_BMI088_SPI_BMP388
   {  // Old ID of Crzyflie Bolt
     .deviceType = "RZ10",
     .deviceTypeName = "Crazyflie Bolt",
@@ -62,13 +63,14 @@ static platformConfig_t configs[] = {
     .physicalLayoutAntennasAreClose = false,
     .motorMap = motorMapBoltBrushless,
   },
+  #endif
   {
     .deviceType = "F407",
     .deviceTypeName = "Crazyflie F407",
     .sensorImplementation = SensorImplementation_bmi270_spi_bmp388,
     .physicalLayoutAntennasAreClose = false,
     .motorMap = motorMapDefaultBrushed,
-  }
+  },
 };
 
 const platformConfig_t* platformGetListOfConfigurations(int* nrOfConfigs) {

@@ -43,6 +43,10 @@
   #include "sensors_bmi088_spi_bmp388.h"
 #endif
 
+#ifdef SENSOR_INCLUDED_BMI270_SPI_BMP388
+  #include "sensors_bmi270_spi_bmp388.h"
+#endif
+
 #ifdef SENSOR_INCLUDED_MPU9250_LPS25H
   #include "sensors_mpu9250_lps25h.h"
 #endif

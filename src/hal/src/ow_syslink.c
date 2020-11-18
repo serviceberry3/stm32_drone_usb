@@ -141,8 +141,7 @@ void owSyslinkRecieve(SyslinkPacket *slp)
   xSemaphoreGive(waitForReply);
 }
 
-static bool owSyslinkTransfer(uint8_t type, uint8_t length)
-{
+static bool owSyslinkTransfer(uint8_t type, uint8_t length) {
   SyslinkPacket slp;
 
   ASSERT(length <= SYSLINK_MTU);
@@ -153,18 +152,15 @@ static bool owSyslinkTransfer(uint8_t type, uint8_t length)
 
   syslinkSendPacket(&slp);
   // Wait for reply
-  if (xSemaphoreTake(waitForReply, M2T(5000)) == pdTRUE)
-  //if (xSemaphoreTake(waitForReply, portMAX_DELAY))
-  {
+  // Guojun: reduce wait time for debug
+  if (xSemaphoreTake(waitForReply, M2T(1000)) == pdTRUE) {
     // We have now got a reply and *owCmd has been filled with data
     if (owDataIsValid)
     {
       owDataIsValid = false;
       return true;
     }
-  }
-  else
-  {
+  } else {
     DEBUG_PRINT("Cmd 0x%X timeout.\n", slp.type);
   }
 

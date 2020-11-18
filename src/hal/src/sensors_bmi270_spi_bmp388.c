@@ -51,7 +51,8 @@
 #include "filter.h"
 #include "i2cdev.h"
 #include "bmi270.h"
-#include "bmp2.h"
+#include "bmi2.h"
+#include "bmp3.h"
 #include "bstdr_types.h"
 #include "static_mem.h"
 
@@ -61,9 +62,9 @@
 // #define BMI270_ACC_GPIO_CS_PORT        GPIOB
 // #define BMI270_ACC_GPIO_CS_PERIF       RCC_AHB1Periph_GPIOB
 
-#define BMI270_GYR_GPIO_CS             GPIO_Pin_0
-#define BMI270_GYR_GPIO_CS_PORT        GPIOB
-#define BMI270_GYR_GPIO_CS_PERIF       RCC_AHB1Periph_GPIOB
+#define BMI270_GPIO_CS                 GPIO_Pin_0
+#define BMI270_GPIO_CS_PORT            GPIOB
+#define BMI270_GPIO_CS_PERIF           RCC_AHB1Periph_GPIOB
 
 #define BMI270_SPI                     SPI2
 #define BMI270_SPI_AF                  GPIO_AF_SPI2
@@ -131,12 +132,12 @@
 /* Usefull macro */
 // #define ACC_EN_CS() GPIO_ResetBits(BMI270_ACC_GPIO_CS_PORT, BMI270_ACC_GPIO_CS)
 // #define ACC_DIS_CS() GPIO_SetBits(BMI270_ACC_GPIO_CS_PORT, BMI270_ACC_GPIO_CS)
-#define GYR_EN_CS() GPIO_ResetBits(BMI270_GYR_GPIO_CS_PORT, BMI270_GYR_GPIO_CS)
-#define GYR_DIS_CS() GPIO_SetBits(BMI270_GYR_GPIO_CS_PORT, BMI270_GYR_GPIO_CS)
+#define BMI_EN_CS() GPIO_ResetBits(BMI270_GPIO_CS_PORT, BMI270_GPIO_CS)
+#define BMI_DIS_CS() GPIO_SetBits(BMI270_GPIO_CS_PORT, BMI270_GPIO_CS)
 
 /* Defines and buffers for full duplex SPI DMA transactions */
 /* The buffers must not be placed in CCM */
-#define SPI_MAX_DMA_TRANSACTION_SIZE    15
+#define SPI_MAX_DMA_TRANSACTION_SIZE    64
 static uint8_t spiTxBuffer[SPI_MAX_DMA_TRANSACTION_SIZE + 1];
 static uint8_t spiRxBuffer[SPI_MAX_DMA_TRANSACTION_SIZE + 1];
 static xSemaphoreHandle spiTxDMAComplete;
@@ -144,8 +145,7 @@ static StaticSemaphore_t spiTxDMACompleteBuffer;
 static xSemaphoreHandle spiRxDMAComplete;
 static StaticSemaphore_t spiRxDMACompleteBuffer;
 
-typedef struct
-{
+typedef struct {
   Axis3f     bias;
   Axis3f     variance;
   Axis3f     mean;
@@ -156,7 +156,7 @@ typedef struct
 } BiasObj;
 
 /* initialize necessary variables */
-static struct bmi270_dev bmi270Dev;
+static struct bmi2_dev   bmi270Dev;
 static struct bmp3_dev   bmp388Dev;
 
 static xQueueHandle accelerometerDataQueue;
@@ -289,52 +289,82 @@ static void spiDMATransaction(uint8_t reg_addr, uint8_t *reg_data, uint16_t len)
 }
 
 // Communication routines
+static BMI2_INTF_RETURN_TYPE bmi_spi_write(uint8_t reg_addr, const uint8_t *reg_data, uint32_t len, void *intf_ptr) {
+  BMI_EN_CS();
 
-static bstdr_ret_t spi_burst_read(uint8_t dev_id, uint8_t reg_addr, uint8_t *reg_data, uint16_t len) {
-  /**< Burst read code comes here */
-  if (dev_id == BMI270_ACCEL_I2C_ADDR_PRIMARY) {
-    ACC_EN_CS();
-  } else {
-    GYR_EN_CS();
-  }
-
-  if (len <= 1 || len > SPI_MAX_DMA_TRANSACTION_SIZE) {
-    spiSendByte(reg_addr);
-    for (int i = 0; i < len; i++) {
-      reg_data[i] = spiReceiveByte();
-    }
-  } else {
-    spiDMATransaction(reg_addr, reg_data, len);
-  }
-
-  if (dev_id == BMI270_ACCEL_I2C_ADDR_PRIMARY) {
-    ACC_DIS_CS();
-  } else {
-    GYR_DIS_CS();
-  }
-
-  return BSTDR_OK;
-}
-
-static bstdr_ret_t spi_burst_write(uint8_t dev_id, uint8_t reg_addr, uint8_t *reg_data, uint16_t len) {
-  if (dev_id == BMI270_ACCEL_I2C_ADDR_PRIMARY) {
-    ACC_EN_CS();
-  } else {
-    GYR_EN_CS();
-  }
   spiSendByte(reg_addr);
   for (int i = 0; i < len; i++) {
     spiSendByte(reg_data[i]);
   }
 
-  if (dev_id == BMI270_ACCEL_I2C_ADDR_PRIMARY) {
-    ACC_DIS_CS();
+  BMI_DIS_CS();
+  return BMI2_INTF_RET_SUCCESS;
+}
+
+static BMI2_INTF_RETURN_TYPE bmi_spi_read(uint8_t reg_addr, uint8_t* reg_data, uint32_t len, void *intf_ptr) {
+  BMI_EN_CS();
+
+  if (len <= 1 || len > SPI_MAX_DMA_TRANSACTION_SIZE) {
+    // DEBUG_PRINT("spi_read: %x, %ld\n", reg_addr, len);
+    spiSendByte(reg_addr);
+    for (int i = 0; i < len; i++)
+      reg_data[i] = spiReceiveByte();
+
   } else {
-    GYR_DIS_CS();
+
+    spiDMATransaction(reg_addr, reg_data, len);
   }
 
-  return BSTDR_OK;
+  BMI_DIS_CS();
+  
+  return BMI2_INTF_RET_SUCCESS;
 }
+
+// static bstdr_ret_t spi_burst_read(uint8_t dev_id, uint8_t reg_addr, uint8_t *reg_data, uint16_t len) {
+//   /**< Burst read code comes here */
+//   if (dev_id == BMI270_ACCEL_I2C_ADDR_PRIMARY) {
+    // ACC_EN_CS();
+//   } else {
+//     GYR_EN_CS();
+//   }
+
+//   if (len <= 1 || len > SPI_MAX_DMA_TRANSACTION_SIZE) {
+//     spiSendByte(reg_addr);
+//     for (int i = 0; i < len; i++) {
+//       reg_data[i] = spiReceiveByte();
+//     }
+//   } else {
+//     spiDMATransaction(reg_addr, reg_data, len);
+//   }
+
+//   if (dev_id == BMI270_ACCEL_I2C_ADDR_PRIMARY) {
+//     ACC_DIS_CS();
+//   } else {
+//     GYR_DIS_CS();
+//   }
+
+//   return BSTDR_OK;
+// }
+
+// static bstdr_ret_t spi_burst_write(uint8_t dev_id, uint8_t reg_addr, uint8_t *reg_data, uint16_t len) {
+//   if (dev_id == BMI270_ACCEL_I2C_ADDR_PRIMARY) {
+//     ACC_EN_CS();
+//   } else {
+//     GYR_EN_CS();
+//   }
+//   spiSendByte(reg_addr);
+//   for (int i = 0; i < len; i++) {
+//     spiSendByte(reg_data[i]);
+//   }
+
+//   if (dev_id == BMI270_ACCEL_I2C_ADDR_PRIMARY) {
+//     ACC_DIS_CS();
+//   } else {
+//     GYR_DIS_CS();
+//   }
+
+//   return BSTDR_OK;
+// }
 
 /***********************
  * I2C private methods *
@@ -358,7 +388,14 @@ static bstdr_ret_t i2c_burst_write(uint8_t dev_id, uint8_t reg_addr, uint8_t *re
 }
 
 
-static void bmi270_ms_delay(uint32_t period) {
+static void bmi270_us_delay(uint32_t period, void *intf_ptr) {
+  /**< Delay code comes */
+  uint32_t period_ms = period / 1000.0;
+  if (period_ms < 1) period_ms = 1;
+  vTaskDelay(M2T(period_ms));
+}
+
+static void bmi388_ms_delay(uint32_t period) {
   /**< Delay code comes */
   vTaskDelay(M2T(period));
 }
@@ -392,7 +429,7 @@ static void spiInit(void) {
     return;
 
   /* Enable SPI and GPIO clocks */
-  RCC_AHB1PeriphClockCmd(BMI270_GPIO_SPI_CLK | BMI270_ACC_GPIO_CS_PERIF, ENABLE);
+  RCC_AHB1PeriphClockCmd(BMI270_GPIO_SPI_CLK | BMI270_GPIO_CS_PERIF, ENABLE);
   /* Enable SPI and GPIO clocks */
   RCC_APB1PeriphClockCmd(BMI270_SPI_CLK, ENABLE);
 
@@ -413,9 +450,9 @@ static void spiInit(void) {
   // GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
   // GPIO_Init(BMI270_ACC_GPIO_CS_PORT, &GPIO_InitStructure);
   /* Configure I/O for the Chip select */
-  GPIO_InitStructure.GPIO_Pin = BMI270_GYR_GPIO_CS;
+  GPIO_InitStructure.GPIO_Pin = BMI270_GPIO_CS;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-  GPIO_Init(BMI270_GYR_GPIO_CS_PORT, &GPIO_InitStructure);
+  GPIO_Init(BMI270_GPIO_CS_PORT, &GPIO_InitStructure);
 
 
   /*!< Connect SPI pins to AF5 */
@@ -424,7 +461,7 @@ static void spiInit(void) {
   GPIO_PinAFConfig(BMI270_GPIO_SPI_PORT, BMI270_GPIO_SPI_MOSI_SRC, BMI270_SPI_AF);
 
   /* disable the chip select */
-  ACC_DIS_CS();
+  BMI_DIS_CS();
 
   spiConfigure();
 }
@@ -443,7 +480,7 @@ static void spiDMAInit(void) {
   DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
   DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
   DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
-  DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)(&(BMI270_SPI->DR));
+  DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t) (&(BMI270_SPI->DR));
   DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
   DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
   DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
@@ -478,17 +515,29 @@ static void spiDMAInit(void) {
   spiRxDMAComplete = xSemaphoreCreateBinaryStatic(&spiRxDMACompleteBuffer);
 }
 
-static uint16_t sensorsGyroGet(Axis3i16* dataOut) {
-  return bmi270_get_gyro_data((struct bmi270_sensor_data*)dataOut, &bmi270Dev);
+static uint8_t sensorsGyroGet(Axis3i16* dataOut) {
+  int8_t rslt;
+  struct bmi2_sensor_data sensor_data = { 0 };
+  rslt = bmi2_get_sensor_data(&sensor_data, 1, &bmi270Dev);
+  dataOut->x = sensor_data.sens_data.gyr.x;
+  dataOut->y = sensor_data.sens_data.gyr.y;
+  dataOut->z = sensor_data.sens_data.gyr.z;
+  return rslt;
 }
 
-static void sensorsAccelGet(Axis3i16* dataOut) {
-  bmi270_get_accel_data((struct bmi270_sensor_data*)dataOut, &bmi270Dev);
+static uint8_t sensorsAccelGet(Axis3i16* dataOut) {
+  int8_t rslt;
+  struct bmi2_sensor_data sensor_data = { 0 };
+  rslt = bmi2_get_sensor_data(&sensor_data, 1, &bmi270Dev);
+  dataOut->x = sensor_data.sens_data.acc.x;
+  dataOut->y = sensor_data.sens_data.acc.y;
+  dataOut->z = sensor_data.sens_data.acc.z;
+  return rslt;
 }
 
 static void sensorsScaleBaro(baro_t* baroScaled, float pressure,
                              float temperature) {
-  baroScaled->pressure = pressure*0.01f;
+  baroScaled->pressure = pressure * 0.01f;
   baroScaled->temperature = temperature;
   baroScaled->asl = ((powf((1015.7f / baroScaled->pressure), 0.1902630958f)
       - 1.0f) * (25.0f + 273.15f)) / 0.0065f;
@@ -596,82 +645,151 @@ static void sensorsDeviceInit(void) {
 
   // Wait for sensors to startup
   vTaskDelay(M2T(SENSORS_STARTUP_TIME_MS));
-
+  
   /* BMI270 */
-  bmi270Dev.accel_id = BMI270_ACCEL_I2C_ADDR_PRIMARY;
-  bmi270Dev.gyro_id = BMI270_GYRO_I2C_ADDR_PRIMARY;
-  bmi270Dev.interface = BMI270_SPI_INTF;
-  bmi270Dev.read = spi_burst_read;
-  bmi270Dev.write = spi_burst_write;
-  bmi270Dev.delay_ms = bmi270_ms_delay;
+  bmi270Dev.intf = BMI2_SPI_INTF;
+  bmi270Dev.read = bmi_spi_read;
+  bmi270Dev.write = bmi_spi_write;
+  bmi270Dev.read_write_len = 1024;
+  bmi270Dev.config_file_ptr = NULL;
+  bmi270Dev.delay_us = bmi270_us_delay;
+  rslt = bmi270_init(&bmi270Dev);
+
+  if (rslt != BMI2_OK) {
+    DEBUG_PRINT("BMI270 init [FAIL: %d]\n", rslt);
+    isInit = false;
+  }
+
+  uint8_t chip_id;
+  rslt = bmi2_get_regs(BMI2_CHIP_ID_ADDR, &chip_id, 1, &bmi270Dev);
+
+  if (chip_id == BMI270_CHIP_ID && rslt == BMI2_OK) {
+    DEBUG_PRINT("BMI270 SPI connection with id = 0x%x [OK]\n", chip_id);
+
+    uint8_t sens_list[2] = { BMI2_ACCEL, BMI2_GYRO };
+    rslt = bmi2_sensor_enable(sens_list, 2, &bmi270Dev);
+    if (rslt != BMI2_OK) {
+      DEBUG_PRINT("BMI270 enable [FAIL]\n");
+      isInit = false;
+    }
+
+    rslt = bmi2_map_data_int(BMI2_DRDY_INT, BMI2_INT2, &bmi270Dev);
+    if (rslt != BMI2_OK) {
+      DEBUG_PRINT("BMI270 map int [FAIL]\n");
+      isInit = false;
+    }
+
+    struct bmi2_sens_config sens_cfg[2];
+    sens_cfg[0].type = BMI2_ACCEL;
+    sens_cfg[0].cfg.acc.odr = BMI2_ACC_ODR_1600HZ;
+    sens_cfg[0].cfg.acc.bwp =BMI2_ACC_NORMAL_AVG4;
+    sens_cfg[0].cfg.acc.filter_perf = BMI2_PERF_OPT_MODE;
+    sens_cfg[0].cfg.acc.range = BMI2_ACC_RANGE_16G;
+
+    sens_cfg[1].type = BMI2_GYRO;
+    sens_cfg[1].cfg.gyr.odr = BMI2_GYR_ODR_800HZ;
+    sens_cfg[1].cfg.gyr.bwp = BMI2_GYR_NORMAL_MODE;
+    sens_cfg[1].cfg.gyr.filter_perf = BMI2_PERF_OPT_MODE;
+    sens_cfg[1].cfg.gyr.range = BMI2_GYR_RANGE_2000;
+    sens_cfg[1].cfg.gyr.noise_perf = BMI2_PERF_OPT_MODE;
+
+    rslt = bmi2_set_sensor_config(sens_cfg, 2, &bmi270Dev);
+    
+    if (rslt != BMI2_OK) {
+      DEBUG_PRINT("BMI270 config [FAIL]\n");
+      isInit = false;
+    }
+    
+    // enable interrupt over INT2 --- PC14
+    struct bmi2_int_pin_config data_int_cfg;
+    data_int_cfg.pin_type = BMI2_INT2;
+    data_int_cfg.int_latch = BMI2_INT_NON_LATCH;
+    data_int_cfg.pin_cfg[0].output_en = BMI2_INT_OUTPUT_ENABLE; // Output enabled
+    data_int_cfg.pin_cfg[0].od = BMI2_INT_PUSH_PULL;            // OpenDrain disabled
+    data_int_cfg.pin_cfg[0].lvl = BMI2_INT_ACTIVE_HIGH;         // Signal High Active
+    data_int_cfg.pin_cfg[0].input_en = BMI2_INT_INPUT_DISABLE;  // Input Disabled
+    rslt = bmi2_set_int_pin_config(&data_int_cfg, &bmi270Dev);
+    if (rslt != BMI2_OK) {
+      DEBUG_PRINT("BMI270 set int [FAIL]\n");
+      isInit = false;
+    }
+
+    DEBUG_PRINT("BMI270 int finish [OK]\n");
+  } else {
+#ifndef SENSORS_IGNORE_IMU_FAIL
+    DEBUG_PRINT("BMI270 get id [FAIL]\n");
+    isInit = false;
+#endif
+  }
 
   /* BMI270 GYRO */
-  rslt = bmi270_gyro_init(&bmi270Dev); // initialize the device
-  if (rslt == BSTDR_OK) {
-    struct bmi270_int_cfg intConfig;
+//   rslt = bmi270_gyro_init(&bmi270Dev); // initialize the device
+//   if (rslt == BSTDR_OK) {
+    // struct bmi088_int_cfg intConfig;
 
-    DEBUG_PRINT("BMI270 Gyro SPI connection [OK].\n");
-    /* set power mode of gyro */
-    bmi270Dev.gyro_cfg.power = BMI270_GYRO_PM_NORMAL;
-    rslt |= bmi270_set_gyro_power_mode(&bmi270Dev);
-    /* set bandwidth and range of gyro */
-    bmi270Dev.gyro_cfg.bw = BMI270_GYRO_BW_116_ODR_1000_HZ;
-    bmi270Dev.gyro_cfg.range = SENSORS_BMI270_GYRO_FS_CFG;
-    bmi270Dev.gyro_cfg.odr = BMI270_GYRO_BW_116_ODR_1000_HZ;
-    rslt |= bmi270_set_gyro_meas_conf(&bmi270Dev);
+//     DEBUG_PRINT("BMI270 Gyro SPI connection [OK].\n");
+//     /* set power mode of gyro */
+//     bmi270Dev.gyro_cfg.power = BMI270_GYRO_PM_NORMAL;
+//     rslt |= bmi270_set_gyro_power_mode(&bmi270Dev);
+//     /* set bandwidth and range of gyro */
+    // bmi270Dev.gyro_cfg.bw = BMI088_GYRO_BW_116_ODR_1000_HZ;
+    // bmi270Dev.gyro_cfg.range = SENSORS_BMI088_GYRO_FS_CFG;
+//     bmi270Dev.gyro_cfg.odr = BMI270_GYRO_BW_116_ODR_1000_HZ;
+//     rslt |= bmi270_set_gyro_meas_conf(&bmi270Dev);
 
-    intConfig.gyro_int_channel = BMI270_INT_CHANNEL_3;
-    intConfig.gyro_int_type = BMI270_GYRO_DATA_RDY_INT;
-    intConfig.gyro_int_pin_3_cfg.enable_int_pin = 1;
-    intConfig.gyro_int_pin_3_cfg.lvl = 1;
-    intConfig.gyro_int_pin_3_cfg.output_mode = 0;
-    /* Setting the interrupt configuration */
-    rslt = bmi270_set_gyro_int_config(&intConfig, &bmi270Dev);
+//     intConfig.gyro_int_channel = BMI270_INT_CHANNEL_3;
+//     intConfig.gyro_int_type = BMI270_GYRO_DATA_RDY_INT;
+//     intConfig.gyro_int_pin_3_cfg.enable_int_pin = 1;
+//     intConfig.gyro_int_pin_3_cfg.lvl = 1;
+//     intConfig.gyro_int_pin_3_cfg.output_mode = 0;
+//     /* Setting the interrupt configuration */
+//     rslt = bmi270_set_gyro_int_config(&intConfig, &bmi270Dev);
 
-    bmi270Dev.delay_ms(50);
-    struct bmi270_sensor_data gyr;
-    rslt |= bmi270_get_gyro_data(&gyr, &bmi270Dev);
+//     bmi270Dev.delay_ms(50);
+//     struct bmi2_sensor_data gyr;
+//     rslt |= bmi270_get_gyro_data(&gyr, &bmi270Dev);
 
-  } else {
-#ifndef SENSORS_IGNORE_IMU_FAIL
-    DEBUG_PRINT("BMI270 Gyro SPI connection [FAIL]\n");
-    isInit = false;
-#endif
-  }
+//   } else {
+// #ifndef SENSORS_IGNORE_IMU_FAIL
+//     DEBUG_PRINT("BMI270 Gyro SPI connection [FAIL]\n");
+//     isInit = false;
+// #endif
+//   }
 
-  /* BMI270 ACCEL */
-  rslt |= bmi270_accel_switch_control(&bmi270Dev, BMI270_ACCEL_POWER_ENABLE);
-  bmi270Dev.delay_ms(5);
+//   /* BMI270 ACCEL */
+//   rslt |= bmi270_accel_switch_control(&bmi270Dev, BMI270_ACCEL_POWER_ENABLE);
+//   bmi270Dev.delay_ms(5);
 
-  rslt = bmi270_accel_init(&bmi270Dev); // initialize the device
-  if (rslt == BSTDR_OK) {
-    DEBUG_PRINT("BMI270 Accel SPI connection [OK]\n");
-    /* set power mode of accel */
-    bmi270Dev.accel_cfg.power = BMI270_ACCEL_PM_ACTIVE;
-    rslt |= bmi270_set_accel_power_mode(&bmi270Dev);
-    bmi270Dev.delay_ms(10);
+//   rslt = bmi270_accel_init(&bmi270Dev); // initialize the device
+//   if (rslt == BSTDR_OK) {
+//     DEBUG_PRINT("BMI270 Accel SPI connection [OK]\n");
+//     /* set power mode of accel */
+//     bmi270Dev.accel_cfg.power = BMI270_ACCEL_PM_ACTIVE;
+//     rslt |= bmi270_set_accel_power_mode(&bmi270Dev);
+//     bmi270Dev.delay_ms(10);
 
-    /* set bandwidth and range of accel */
-    bmi270Dev.accel_cfg.bw = BMI270_ACCEL_BW_OSR4;
-    bmi270Dev.accel_cfg.range = SENSORS_BMI270_ACCEL_FS_CFG;
-    bmi270Dev.accel_cfg.odr = BMI270_ACCEL_ODR_1600_HZ;
-    rslt |= bmi270_set_accel_meas_conf(&bmi270Dev);
+//     /* set bandwidth and range of accel */
+//     bmi270Dev.accel_cfg.bw = BMI270_ACCEL_BW_OSR4;
+    // bmi270Dev.accel_cfg.range = SENSORS_BMI088_ACCEL_FS_CFG;
+//     bmi270Dev.accel_cfg.odr = BMI270_ACCEL_ODR_1600_HZ;
+//     rslt |= bmi270_set_accel_meas_conf(&bmi270Dev);
 
-    struct bmi270_sensor_data acc;
-    rslt |= bmi270_get_accel_data(&acc, &bmi270Dev);
-  } else {
-#ifndef SENSORS_IGNORE_IMU_FAIL
-    DEBUG_PRINT("BMI270 Accel SPI connection [FAIL]\n");
-    isInit = false;
-#endif
-  }
+//     struct bmi2_sensor_data acc;
+//     rslt |= bmi270_get_accel_data(&acc, &bmi270Dev);
+//   } else {
+// #ifndef SENSORS_IGNORE_IMU_FAIL
+//     DEBUG_PRINT("BMI270 Accel SPI connection [FAIL]\n");
+//     isInit = false;
+// #endif
+//   }
 
   /* BMP388 */
+
   bmp388Dev.dev_id = BMP3_I2C_ADDR_SEC;
   bmp388Dev.intf = BMP3_I2C_INTF;
   bmp388Dev.read = i2c_burst_read;
   bmp388Dev.write = i2c_burst_write;
-  bmp388Dev.delay_ms = bmi270_ms_delay;
+  bmp388Dev.delay_ms = bmi388_ms_delay;
 
   int i = 3;
   do {
@@ -683,38 +801,38 @@ static void sensorsDeviceInit(void) {
   if (rslt == BMP3_OK) {
     isBarometerPresent = true;
     DEBUG_PRINT("BMP388 I2C connection [OK]\n");
-    /* Used to select the settings user needs to change */
+    // Used to select the settings user needs to change
     uint16_t settings_sel;
-    /* Select the pressure and temperature sensor to be enabled */
+    // Select the pressure and temperature sensor to be enabled
     bmp388Dev.settings.press_en = BMP3_ENABLE;
     bmp388Dev.settings.temp_en = BMP3_ENABLE;
-    /* Select the output data rate and oversampling settings for pressure and temperature */
+    // Select the output data rate and oversampling settings for pressure and temperature
     bmp388Dev.settings.odr_filter.press_os = BMP3_OVERSAMPLING_8X;
     bmp388Dev.settings.odr_filter.temp_os = BMP3_NO_OVERSAMPLING;
     bmp388Dev.settings.odr_filter.odr = BMP3_ODR_50_HZ;
     bmp388Dev.settings.odr_filter.iir_filter = BMP3_IIR_FILTER_COEFF_3;
-    /* Assign the settings which needs to be set in the sensor */
+    // Assign the settings which needs to be set in the sensor
     settings_sel = BMP3_PRESS_EN_SEL | BMP3_TEMP_EN_SEL | BMP3_PRESS_OS_SEL | BMP3_TEMP_OS_SEL | BMP3_ODR_SEL | BMP3_IIR_FILTER_SEL;
     rslt = bmp3_set_sensor_settings(settings_sel, &bmp388Dev);
 
-    /* Set the power mode to normal mode */
+    // Set the power mode to normal mode
     bmp388Dev.settings.op_mode = BMP3_NORMAL_MODE;
     rslt = bmp3_set_op_mode(&bmp388Dev);
 
 
     bmp388Dev.delay_ms(20); // wait before first read out
     // read out data
-    /* Variable used to select the sensor component */
+    // Variable used to select the sensor component
     uint8_t sensor_comp;
-    /* Variable used to store the compensated data */
+    // Variable used to store the compensated data
     struct bmp3_data data;
 
-    /* Sensor component selection */
+    // Sensor component selection
     sensor_comp = BMP3_PRESS | BMP3_TEMP;
-    /* Temperature and Pressure data are read and stored in the bmp3_data instance */
+    // Temperature and Pressure data are read and stored in the bmp3_data instance
     rslt = bmp3_get_sensor_data(sensor_comp, &data, &bmp388Dev);
 
-    /* Print the temperature and pressure data */
+    // Print the temperature and pressure data
 //    DEBUG_PRINT("BMP388 T:%0.2f  P:%0.2f\n",data.temperature, data.pressure/100.0f);
     baroMeasDelayMin = SENSORS_DELAY_BARO;
   } else {
@@ -758,7 +876,7 @@ static void sensorsInterruptInit(void) {
   // Enable the interrupt on PC14
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_14;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; //GPIO_PuPd_DOWN;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; // GPIO_PuPd_DOWN;
   GPIO_Init(GPIOC, &GPIO_InitStructure);
 
   SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOC, EXTI_PinSource14);
@@ -784,35 +902,44 @@ void sensorsBmi270SpiBmp388Init(void) {
 
   sensorsBiasObjInit(&gyroBiasRunning);
   sensorsDeviceInit();
+
+// sensorsBmi270SpiBmp388Test();
+
   sensorsInterruptInit();
+
+  int8_t rslt = sensorsGyroGet(&accelRaw);
+  DEBUG_PRINT("BMI270 accel %d: x = %d, y = %d, z = %d\n", rslt, accelRaw.x, accelRaw.y, accelRaw.z);
+  return;
   sensorsTaskInit();
 }
 
-static bool gyroSelftest() {
+
+static bool accelSelftest() {
   bool testStatus = true;
-
+  // Guojun: disable for debug
   int i = 3;
-  uint16_t readResult = BMI270_OK;
+  uint16_t readResult = BMI2_OK;
   do {
-    readResult = sensorsGyroGet(&gyroRaw);
-  } while (readResult != BMI270_OK && i-- > 0);
+    readResult = sensorsAccelGet(&accelRaw);
+  } while (readResult != BMI2_OK && i-- > 0);
 
-  if ((readResult != BMI270_OK) || (gyroRaw.x == 0 && gyroRaw.y == 0 && gyroRaw.z == 0)) {
-    DEBUG_PRINT("BMI270 gyro returning x=0 y=0 z=0 [FAILED]\n");
+  if ((readResult != BMI2_OK) || (accelRaw.x == 0 && accelRaw.y == 0 && accelRaw.z == 0)) {
+    DEBUG_PRINT("BMI270 accel returning x=0 y=0 z=0 [FAILED: %d]\n", readResult);
     testStatus = false;
   }
 
-  int8_t gyroResult = 0;
-  bmi270_perform_gyro_selftest(&gyroResult, &bmi270Dev);
-  if (gyroResult == BMI270_SELFTEST_PASS) {
-    DEBUG_PRINT("BMI270 gyro self-test [OK]\n");
+  int8_t accelResult = 0;
+  accelResult = bmi2_perform_accel_self_test(&bmi270Dev);
+  if (accelResult == BMI2_OK) {
+    DEBUG_PRINT("BMI270 accel self-test [OK]\n");
   } else {
-    DEBUG_PRINT("BMI270 gyro self-test [FAILED]\n");
+    DEBUG_PRINT("BMI270 accel self-test [FAILED]\n");
     testStatus = false;
   }
 
   return testStatus;
 }
+
 
 bool sensorsBmi270SpiBmp388Test(void) {
   bool testStatus = true;
@@ -822,7 +949,7 @@ bool sensorsBmi270SpiBmp388Test(void) {
     testStatus = false;
   }
 
-  if (!gyroSelftest()) {
+  if (!accelSelftest()) {
     testStatus = false;
   }
 
@@ -924,8 +1051,8 @@ static void sensorsBiasObjInit(BiasObj* bias) {
  */
 static void sensorsCalculateVarianceAndMean(BiasObj* bias, Axis3f* varOut, Axis3f* meanOut) {
   uint32_t i;
-  int64_t sum[GYRO_NBR_OF_AXES] = {0};
-  int64_t sumSq[GYRO_NBR_OF_AXES] = {0};
+  int64_t sum[GYRO_NBR_OF_AXES] = { 0 };
+  int64_t sumSq[GYRO_NBR_OF_AXES] = { 0 };
 
   for (i = 0; i < SENSORS_NBR_OF_BIAS_SAMPLES; i++) {
     sum[0] += bias->buffer[i].x;
@@ -936,13 +1063,13 @@ static void sensorsCalculateVarianceAndMean(BiasObj* bias, Axis3f* varOut, Axis3
     sumSq[2] += bias->buffer[i].z * bias->buffer[i].z;
   }
 
-  varOut->x = (sumSq[0] - ((int64_t)sum[0] * sum[0]) / SENSORS_NBR_OF_BIAS_SAMPLES);
-  varOut->y = (sumSq[1] - ((int64_t)sum[1] * sum[1]) / SENSORS_NBR_OF_BIAS_SAMPLES);
-  varOut->z = (sumSq[2] - ((int64_t)sum[2] * sum[2]) / SENSORS_NBR_OF_BIAS_SAMPLES);
+  varOut->x = (sumSq[0] - ((int64_t) sum[0] * sum[0]) / SENSORS_NBR_OF_BIAS_SAMPLES);
+  varOut->y = (sumSq[1] - ((int64_t) sum[1] * sum[1]) / SENSORS_NBR_OF_BIAS_SAMPLES);
+  varOut->z = (sumSq[2] - ((int64_t) sum[2] * sum[2]) / SENSORS_NBR_OF_BIAS_SAMPLES);
 
-  meanOut->x = (float)sum[0] / SENSORS_NBR_OF_BIAS_SAMPLES;
-  meanOut->y = (float)sum[1] / SENSORS_NBR_OF_BIAS_SAMPLES;
-  meanOut->z = (float)sum[2] / SENSORS_NBR_OF_BIAS_SAMPLES;
+  meanOut->x = (float) sum[0] / SENSORS_NBR_OF_BIAS_SAMPLES;
+  meanOut->y = (float) sum[1] / SENSORS_NBR_OF_BIAS_SAMPLES;
+  meanOut->z = (float) sum[2] / SENSORS_NBR_OF_BIAS_SAMPLES;
 }
 
 /**
@@ -1009,18 +1136,19 @@ static bool sensorsFindBiasValue(BiasObj* bias) {
 
 bool sensorsBmi270SpiBmp388ManufacturingTest(void) {
   bool testStatus = true;
-  if (!gyroSelftest()) {
-    testStatus = false;
-  }
+  // Guojun: disable for debug
+  // if (!gyroSelftest()) {
+  //   testStatus = false;
+  // }
 
-  int8_t accResult = 0;
-  bmi270_perform_accel_selftest(&accResult, &bmi270Dev);
-  if (accResult == BMI270_SELFTEST_PASS) {
-    DEBUG_PRINT("BMI270 acc self-test [OK]\n");
-  } else {
-    DEBUG_PRINT("BMI270 acc self-test [FAILED]\n");
-    testStatus = false;
-  }
+  // int8_t accResult = 0;
+  // bmi270_perform_accel_selftest(&accResult, &bmi270Dev);
+  // if (accResult == BMI270_SELFTEST_PASS) {
+  //   DEBUG_PRINT("BMI270 acc self-test [OK]\n");
+  // } else {
+  //   DEBUG_PRINT("BMI270 acc self-test [FAILED]\n");
+  //   testStatus = false;
+  // }
 
   return testStatus;
 }
@@ -1050,34 +1178,35 @@ static void sensorsAccAlignToGravity(Axis3f* in, Axis3f* out) {
 }
 
 void sensorsBmi270SpiBmp388SetAccMode(accModes accMode) {
-  switch (accMode) {
-    case ACC_MODE_PROPTEST:
-//      bmi270_accel_soft_reset(&bmi270Dev);
-      /* set bandwidth and range of accel (280Hz cut-off according to datasheet) */
-      bmi270Dev.accel_cfg.bw = BMI270_ACCEL_BW_NORMAL;
-      bmi270Dev.accel_cfg.range = SENSORS_BMI270_ACCEL_FS_CFG;
-      bmi270Dev.accel_cfg.odr = BMI270_ACCEL_ODR_1600_HZ;
-      if (bmi270_set_accel_meas_conf(&bmi270Dev) != BMI270_OK) {
-        DEBUG_PRINT("ACC config [FAIL]\n");
-      }
-      for (uint8_t i = 0; i < 3; i++) {
-        lpf2pInit(&accLpf[i],  1000, 500);
-      }
-      break;
-    case ACC_MODE_FLIGHT:
-    default:
-      /* set bandwidth and range of accel (145Hz cut-off according to datasheet) */
-      bmi270Dev.accel_cfg.bw = BMI270_ACCEL_BW_OSR4;
-      bmi270Dev.accel_cfg.range = SENSORS_BMI270_ACCEL_FS_CFG;
-      bmi270Dev.accel_cfg.odr = BMI270_ACCEL_ODR_1600_HZ;
-      if (bmi270_set_accel_meas_conf(&bmi270Dev) != BMI270_OK) {
-        DEBUG_PRINT("ACC config [FAIL]\n");
-      }
-      for (uint8_t i = 0; i < 3; i++) {
-        lpf2pInit(&accLpf[i],  1000, ACCEL_LPF_CUTOFF_FREQ);
-      }
-      break;
-  }
+  // Guojun: disable for debug
+//   switch (accMode) {
+//     case ACC_MODE_PROPTEST:
+// //      bmi270_accel_soft_reset(&bmi270Dev);
+//       /* set bandwidth and range of accel (280Hz cut-off according to datasheet) */
+//       bmi270Dev.accel_cfg.bw = BMI270_ACCEL_BW_NORMAL;
+//       bmi270Dev.accel_cfg.range = SENSORS_BMI270_ACCEL_FS_CFG;
+//       bmi270Dev.accel_cfg.odr = BMI270_ACCEL_ODR_1600_HZ;
+//       if (bmi270_set_accel_meas_conf(&bmi270Dev) != BMI2_OK) {
+//         DEBUG_PRINT("ACC config [FAIL]\n");
+//       }
+//       for (uint8_t i = 0; i < 3; i++) {
+//         lpf2pInit(&accLpf[i],  1000, 500);
+//       }
+//       break;
+//     case ACC_MODE_FLIGHT:
+//     default:
+//       /* set bandwidth and range of accel (145Hz cut-off according to datasheet) */
+//       bmi270Dev.accel_cfg.bw = BMI270_ACCEL_BW_OSR4;
+//       bmi270Dev.accel_cfg.range = SENSORS_BMI270_ACCEL_FS_CFG;
+//       bmi270Dev.accel_cfg.odr = BMI270_ACCEL_ODR_1600_HZ;
+//       if (bmi270_set_accel_meas_conf(&bmi270Dev) != BMI2_OK) {
+//         DEBUG_PRINT("ACC config [FAIL]\n");
+//       }
+//       for (uint8_t i = 0; i < 3; i++) {
+//         lpf2pInit(&accLpf[i],  1000, ACCEL_LPF_CUTOFF_FREQ);
+//       }
+//       break;
+//   }
 }
 
 static void applyAxis3fLpf(lpf2pData *data, Axis3f* in) {

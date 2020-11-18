@@ -99,7 +99,7 @@ typedef enum
 	BSTDR_E_CON_ERROR= -4,
 	BSTDR_E_CHIPID_ERROR= -5,
 	BSTDR_E_NULL_PTR = -127
-}bstdr_ret_t;
+} bstdr_ret_t;
 
 /*!
  * @brief Enumeration for sensor interfaces
