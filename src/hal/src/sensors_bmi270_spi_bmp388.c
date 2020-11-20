@@ -104,12 +104,11 @@
 #define SENSORS_DELAY_BARO              (SENSORS_READ_RATE_HZ / SENSORS_READ_BARO_HZ)
 #define SENSORS_DELAY_MAG               (SENSORS_READ_RATE_HZ / SENSORS_READ_MAG_HZ)
 
-#define SENSORS_BMI270_GYRO_FS_CFG      BMI270_GYRO_RANGE_2000_DPS
 #define SENSORS_BMI270_DEG_PER_LSB_CFG  (2.0f *2000.0f) / 65536.0f
 
-#define SENSORS_BMI270_ACCEL_CFG        24
-#define SENSORS_BMI270_ACCEL_FS_CFG     BMI270_ACCEL_RANGE_24G
-#define SENSORS_BMI270_G_PER_LSB_CFG    (2.0f * (float)SENSORS_BMI270_ACCEL_CFG) / 65536.0f
+#define SENSORS_BMI270_ACCEL_CFG        16
+// #define SENSORS_BMI270_ACCEL_FS_CFG     BMI270_ACCEL_RANGE_24G
+#define SENSORS_BMI270_G_PER_LSB_CFG    (2.0f * (float) SENSORS_BMI270_ACCEL_CFG) / 65536.0f
 #define SENSORS_BMI270_1G_IN_LSB        (65536 / SENSORS_BMI270_ACCEL_CFG / 2)
 
 #define SENSORS_VARIANCE_MAN_TEST_TIMEOUT   M2T(1000) // Timeout in ms
@@ -130,8 +129,6 @@
 #define SENSORS_ACC_SCALE_SAMPLES  200
 
 /* Usefull macro */
-// #define ACC_EN_CS() GPIO_ResetBits(BMI270_ACC_GPIO_CS_PORT, BMI270_ACC_GPIO_CS)
-// #define ACC_DIS_CS() GPIO_SetBits(BMI270_ACC_GPIO_CS_PORT, BMI270_ACC_GPIO_CS)
 #define BMI_EN_CS() GPIO_ResetBits(BMI270_GPIO_CS_PORT, BMI270_GPIO_CS)
 #define BMI_DIS_CS() GPIO_SetBits(BMI270_GPIO_CS_PORT, BMI270_GPIO_CS)
 
@@ -518,6 +515,7 @@ static void spiDMAInit(void) {
 static uint8_t sensorsGyroGet(Axis3i16* dataOut) {
   int8_t rslt;
   struct bmi2_sensor_data sensor_data = { 0 };
+  sensor_data.type = BMI2_GYRO;
   rslt = bmi2_get_sensor_data(&sensor_data, 1, &bmi270Dev);
   dataOut->x = sensor_data.sens_data.gyr.x;
   dataOut->y = sensor_data.sens_data.gyr.y;
@@ -528,9 +526,10 @@ static uint8_t sensorsGyroGet(Axis3i16* dataOut) {
 static uint8_t sensorsAccelGet(Axis3i16* dataOut) {
   int8_t rslt;
   struct bmi2_sensor_data sensor_data = { 0 };
+  sensor_data.type = BMI2_ACCEL;
   rslt = bmi2_get_sensor_data(&sensor_data, 1, &bmi270Dev);
   dataOut->x = sensor_data.sens_data.acc.x;
-  dataOut->y = sensor_data.sens_data.acc.y;
+  dataOut->y = sensor_data.sens_data.acc.y; 
   dataOut->z = sensor_data.sens_data.acc.z;
   return rslt;
 }
@@ -902,14 +901,7 @@ void sensorsBmi270SpiBmp388Init(void) {
 
   sensorsBiasObjInit(&gyroBiasRunning);
   sensorsDeviceInit();
-
-// sensorsBmi270SpiBmp388Test();
-
   sensorsInterruptInit();
-
-  int8_t rslt = sensorsGyroGet(&accelRaw);
-  DEBUG_PRINT("BMI270 accel %d: x = %d, y = %d, z = %d\n", rslt, accelRaw.x, accelRaw.y, accelRaw.z);
-  return;
   sensorsTaskInit();
 }
 
@@ -924,7 +916,7 @@ static bool accelSelftest() {
   } while (readResult != BMI2_OK && i-- > 0);
 
   if ((readResult != BMI2_OK) || (accelRaw.x == 0 && accelRaw.y == 0 && accelRaw.z == 0)) {
-    DEBUG_PRINT("BMI270 accel returning x=0 y=0 z=0 [FAILED: %d]\n", readResult);
+    DEBUG_PRINT("BMI270 accel returning x = 0 y = 0 z = 0 [FAILED: %d]\n", readResult);
     testStatus = false;
   }
 
@@ -1137,18 +1129,18 @@ static bool sensorsFindBiasValue(BiasObj* bias) {
 bool sensorsBmi270SpiBmp388ManufacturingTest(void) {
   bool testStatus = true;
   // Guojun: disable for debug
-  // if (!gyroSelftest()) {
-  //   testStatus = false;
-  // }
+  if (!accelSelftest()) {
+    testStatus = false;
+  }
 
-  // int8_t accResult = 0;
-  // bmi270_perform_accel_selftest(&accResult, &bmi270Dev);
-  // if (accResult == BMI270_SELFTEST_PASS) {
-  //   DEBUG_PRINT("BMI270 acc self-test [OK]\n");
-  // } else {
-  //   DEBUG_PRINT("BMI270 acc self-test [FAILED]\n");
-  //   testStatus = false;
-  // }
+  int8_t accelResult = 0;
+  accelResult = bmi2_perform_accel_self_test(&bmi270Dev);
+  if (accelResult == BMI2_OK) {
+    DEBUG_PRINT("BMI270 accel self-test [OK]\n");
+  } else {
+    DEBUG_PRINT("BMI270 accel self-test [FAILED]\n");
+    testStatus = false;
+  }
 
   return testStatus;
 }
@@ -1178,35 +1170,41 @@ static void sensorsAccAlignToGravity(Axis3f* in, Axis3f* out) {
 }
 
 void sensorsBmi270SpiBmp388SetAccMode(accModes accMode) {
-  // Guojun: disable for debug
-//   switch (accMode) {
-//     case ACC_MODE_PROPTEST:
-// //      bmi270_accel_soft_reset(&bmi270Dev);
-//       /* set bandwidth and range of accel (280Hz cut-off according to datasheet) */
-//       bmi270Dev.accel_cfg.bw = BMI270_ACCEL_BW_NORMAL;
-//       bmi270Dev.accel_cfg.range = SENSORS_BMI270_ACCEL_FS_CFG;
-//       bmi270Dev.accel_cfg.odr = BMI270_ACCEL_ODR_1600_HZ;
-//       if (bmi270_set_accel_meas_conf(&bmi270Dev) != BMI2_OK) {
-//         DEBUG_PRINT("ACC config [FAIL]\n");
-//       }
-//       for (uint8_t i = 0; i < 3; i++) {
-//         lpf2pInit(&accLpf[i],  1000, 500);
-//       }
-//       break;
-//     case ACC_MODE_FLIGHT:
-//     default:
-//       /* set bandwidth and range of accel (145Hz cut-off according to datasheet) */
-//       bmi270Dev.accel_cfg.bw = BMI270_ACCEL_BW_OSR4;
-//       bmi270Dev.accel_cfg.range = SENSORS_BMI270_ACCEL_FS_CFG;
-//       bmi270Dev.accel_cfg.odr = BMI270_ACCEL_ODR_1600_HZ;
-//       if (bmi270_set_accel_meas_conf(&bmi270Dev) != BMI2_OK) {
-//         DEBUG_PRINT("ACC config [FAIL]\n");
-//       }
-//       for (uint8_t i = 0; i < 3; i++) {
-//         lpf2pInit(&accLpf[i],  1000, ACCEL_LPF_CUTOFF_FREQ);
-//       }
-//       break;
-//   }
+  struct bmi2_sens_config sens_cfg;
+  switch (accMode) {
+    case ACC_MODE_PROPTEST:
+      /* set bandwidth and range of accel (740Hz cut-off according to datasheet) */
+      sens_cfg.type = BMI2_ACCEL;
+      sens_cfg.cfg.acc.odr = BMI2_ACC_ODR_1600HZ;
+      sens_cfg.cfg.acc.bwp =BMI2_ACC_NORMAL_AVG4;
+      sens_cfg.cfg.acc.filter_perf = BMI2_PERF_OPT_MODE;
+      sens_cfg.cfg.acc.range = BMI2_ACC_RANGE_16G;
+
+      if (bmi2_set_sensor_config(&sens_cfg, 1, &bmi270Dev) != BMI2_OK) {
+        DEBUG_PRINT("ACC config [FAIL]\n");
+      }
+
+      for (uint8_t i = 0; i < 3; i++) {
+        lpf2pInit(&accLpf[i],  1000, 500);
+      }
+      break;
+    case ACC_MODE_FLIGHT:
+    default:
+      /* set bandwidth and range of accel (145Hz cut-off according to datasheet) */
+      sens_cfg.type = BMI2_ACCEL;
+      sens_cfg.cfg.acc.odr = BMI2_ACC_ODR_1600HZ;
+      sens_cfg.cfg.acc.bwp =BMI2_ACC_OSR4_AVG1;
+      sens_cfg.cfg.acc.filter_perf = BMI2_PERF_OPT_MODE;
+      sens_cfg.cfg.acc.range = BMI2_ACC_RANGE_16G;
+
+      if (bmi2_set_sensor_config(&sens_cfg, 1, &bmi270Dev) != BMI2_OK) {
+        DEBUG_PRINT("ACC config [FAIL]\n");
+      }
+      for (uint8_t i = 0; i < 3; i++) {
+        lpf2pInit(&accLpf[i],  1000, ACCEL_LPF_CUTOFF_FREQ);
+      }
+      break;
+  }
 }
 
 static void applyAxis3fLpf(lpf2pData *data, Axis3f* in) {
