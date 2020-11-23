@@ -183,20 +183,17 @@ void systemTask(void *arg) {
   estimator = deckGetRequiredEstimator();
   stabilizerInit(estimator);
 
-  DEBUG_PRINT("after sensor init\n");
+  DEBUG_PRINT("SYSTEM START\n");
   systemStart();
   workerLoop();
   while (1)
     vTaskDelay(portMAX_DELAY);
 
-
-  
-  
   
   if (deckGetRequiredLowInterferenceRadioMode() && platformConfigPhysicalLayoutAntennasAreClose()) {
     platformSetLowInterferenceRadioMode();
   }
-  soundInit();
+  // soundInit(); // for buzzer deck
   memInit();
 
 #ifdef PROXIMITY_ENABLED

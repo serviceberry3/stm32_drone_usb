@@ -246,8 +246,7 @@ static void melodyplayer(uint32_t counter, uint32_t * mi, Melody * m) {
 
 static uint8_t static_ratio = 0;
 static uint16_t static_freq = 4000;
-static void bypass(uint32_t counter, uint32_t * mi, Melody * melody)
-{
+static void bypass(uint32_t counter, uint32_t * mi, Melody * melody) {
   buzzerOn(static_freq);
 }
 
@@ -255,8 +254,7 @@ static uint16_t siren_start = 2000;
 static uint16_t siren_freq = 2000;
 static uint16_t siren_stop = 4000;
 static int16_t siren_step = 40;
-static void siren(uint32_t counter, uint32_t * mi, Melody * melody)
-{
+static void siren(uint32_t counter, uint32_t * mi, Melody * melody) {
   siren_freq += siren_step;
   if (siren_freq > siren_stop) {
     siren_step *= -1;
@@ -275,8 +273,7 @@ static int pitch;
 static int roll;
 static int tilt_freq;
 static int tilt_ratio;
-static void tilt(uint32_t counter, uint32_t * mi, Melody * melody)
-{
+static void tilt(uint32_t counter, uint32_t * mi, Melody * melody) {
   pitchid = logGetVarId("stabilizer", "pitch");
   rollid = logGetVarId("stabilizer", "roll");
 
@@ -320,8 +317,7 @@ static xTimerHandle timer;
 static StaticTimer_t timerBuffer;
 static uint32_t counter = 0;
 
-static void soundTimer(xTimerHandle timer)
-{
+static void soundTimer(xTimerHandle timer) {
   int effect;
   counter++;
 
@@ -336,8 +332,7 @@ static void soundTimer(xTimerHandle timer)
   }
 }
 
-void soundInit(void)
-{
+void soundInit(void) {
   if (isInit) {
     return;
   }
@@ -350,13 +345,11 @@ void soundInit(void)
   isInit = true;
 }
 
-bool soundTest(void)
-{
+bool soundTest(void) {
   return isInit;
 }
 
-void soundSetEffect(uint32_t effect)
-{
+void soundSetEffect(uint32_t effect) {
   sys_effect = effect;
 }
 

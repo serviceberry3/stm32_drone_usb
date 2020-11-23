@@ -88,16 +88,14 @@ static uint16_t motorsConv16ToBits(uint16_t bits)
 /* Public functions */
 
 //Initialization. Will set all motors ratio to 0%
-void motorsInit(const MotorPerifDef** motorMapSelect)
-{
+void motorsInit(const MotorPerifDef** motorMapSelect) {
   int i;
   //Init structures
   GPIO_InitTypeDef GPIO_InitStructure;
   TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
   TIM_OCInitTypeDef  TIM_OCInitStructure;
 
-  if (isInit)
-  {
+  if (isInit) {
     // First to init will configure it
     return;
   }
@@ -106,8 +104,7 @@ void motorsInit(const MotorPerifDef** motorMapSelect)
 
   DEBUG_PRINT("Using %s motor driver\n", motorMap[0]->drvType == BRUSHED ? "brushed" : "brushless");
 
-  for (i = 0; i < NBR_OF_MOTORS; i++)
-  {
+  for (i = 0; i < NBR_OF_MOTORS; i++) {
     //Clock the gpio and the timers
     MOTORS_RCC_GPIO_CMD(motorMap[i]->gpioPerif, ENABLE);
     MOTORS_RCC_GPIO_CMD(motorMap[i]->gpioPowerswitchPerif, ENABLE);

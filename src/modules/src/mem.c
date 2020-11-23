@@ -104,8 +104,7 @@ static const MemoryOwHandlerDef_t* owMemHandler = 0;
 
 STATIC_MEM_TASK_ALLOC(memTask, MEM_TASK_STACKSIZE);
 
-void memInit(void)
-{
+void memInit(void) {
   if(isInit) {
     return;
   }
@@ -134,10 +133,11 @@ void memoryRegisterHandler(const MemoryHandlerDef_t* handlerDef){
   for (int i = 0; i < nrOfHandlers; i++) {
     ASSERT(handlerDef->type != handlers[i]->type);
   }
+  // Guojun: debug for mem module
+  DEBUG_PRINT("mem register: %d\n", handlerDef->type);
   ASSERT(nrOfHandlers < MAX_NR_HANDLERS);
   ASSERT(registrationEnabled);
   handlers[nrOfHandlers] = handlerDef;
-  nrOfHandlers++;
 }
 
 void memoryRegisterOwHandler(const MemoryOwHandlerDef_t* handlerDef){
@@ -156,7 +156,7 @@ static void memTask(void* param) {
   // to query for available memories
   registrationEnabled = false;
 
-	while(1) {
+	while (1) {
 		crtpReceivePacketBlock(CRTP_PORT_MEM, &packet);
 
 		switch (packet.channel) {

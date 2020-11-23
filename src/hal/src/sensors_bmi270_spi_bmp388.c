@@ -134,7 +134,7 @@
 
 /* Defines and buffers for full duplex SPI DMA transactions */
 /* The buffers must not be placed in CCM */
-#define SPI_MAX_DMA_TRANSACTION_SIZE    64
+#define SPI_MAX_DMA_TRANSACTION_SIZE    15
 static uint8_t spiTxBuffer[SPI_MAX_DMA_TRANSACTION_SIZE + 1];
 static uint8_t spiRxBuffer[SPI_MAX_DMA_TRANSACTION_SIZE + 1];
 static xSemaphoreHandle spiTxDMAComplete;
@@ -572,16 +572,16 @@ bool sensorsBmi270SpiBmp388AreCalibrated() {
 
 static void sensorsTask(void *param) {
   systemWaitStart();
-
   Axis3f accScaled;
   /* wait an additional second the keep bus free
    * this is only required by the z-ranger, since the
    * configuration will be done after system start-up */
-  //vTaskDelayUntil(&lastWakeTime, M2T(1500));
+  // vTaskDelayUntil(&lastWakeTime, M2T(1500));
+  DEBUG_PRINT("sensor task begins\n");
   while (1) {
+    DEBUG_PRINT("sensor task loop p1\n");
     if (pdTRUE == xSemaphoreTake(sensorsDataReady, portMAX_DELAY)) {
       sensorData.interruptTimestamp = imuIntTimestamp;
-
       /* get data from chosen sensors */
       sensorsGyroGet(&gyroRaw);
       sensorsAccelGet(&accelRaw);
@@ -607,6 +607,7 @@ static void sensorsTask(void *param) {
       accScaled.z = accelRaw.z * SENSORS_BMI270_G_PER_LSB_CFG / accScale;
       sensorsAccAlignToGravity(&accScaled, &sensorData.acc);
       applyAxis3fLpf((lpf2pData*)(&accLpf), &sensorData.acc);
+
     }
 
     if (isBarometerPresent) {
@@ -621,11 +622,12 @@ static void sensorsTask(void *param) {
         baroMeasDelay = baroMeasDelayMin;
       }
     }
+
+    // overwrite to queue
     xQueueOverwrite(accelerometerDataQueue, &sensorData.acc);
     xQueueOverwrite(gyroDataQueue, &sensorData.gyro);
-    if (isBarometerPresent) {
+    if (isBarometerPresent)
       xQueueOverwrite(barometerDataQueue, &sensorData.baro);
-    }
 
     xSemaphoreGive(dataReady);
   }
@@ -680,7 +682,7 @@ static void sensorsDeviceInit(void) {
 
     struct bmi2_sens_config sens_cfg[2];
     sens_cfg[0].type = BMI2_ACCEL;
-    sens_cfg[0].cfg.acc.odr = BMI2_ACC_ODR_1600HZ;
+    sens_cfg[0].cfg.acc.odr = BMI2_ACC_ODR_800HZ;
     sens_cfg[0].cfg.acc.bwp =BMI2_ACC_NORMAL_AVG4;
     sens_cfg[0].cfg.acc.filter_perf = BMI2_PERF_OPT_MODE;
     sens_cfg[0].cfg.acc.range = BMI2_ACC_RANGE_16G;
@@ -737,7 +739,7 @@ static void sensorsDeviceInit(void) {
 //     rslt |= bmi270_set_gyro_meas_conf(&bmi270Dev);
 
 //     intConfig.gyro_int_channel = BMI270_INT_CHANNEL_3;
-//     intConfig.gyro_int_type = BMI270_GYRO_DATA_RDY_INT;
+    // intConfig.gyro_int_type = BMI088_GYRO_DATA_RDY_INT;
 //     intConfig.gyro_int_pin_3_cfg.enable_int_pin = 1;
 //     intConfig.gyro_int_pin_3_cfg.lvl = 1;
 //     intConfig.gyro_int_pin_3_cfg.output_mode = 0;
@@ -845,7 +847,7 @@ static void sensorsDeviceInit(void) {
   // Init second order filer for accelerometer and gyro
   for (uint8_t i = 0; i < 3; i++) {
     lpf2pInit(&gyroLpf[i], 1000, GYRO_LPF_CUTOFF_FREQ);
-    lpf2pInit(&accLpf[i],  1000, ACCEL_LPF_CUTOFF_FREQ);
+    lpf2pInit(&accLpf[i], 1000, ACCEL_LPF_CUTOFF_FREQ);
   }
 
   cosPitch = cosf(configblockGetCalibPitch() * (float) M_PI / 180);
@@ -908,7 +910,6 @@ void sensorsBmi270SpiBmp388Init(void) {
 
 static bool accelSelftest() {
   bool testStatus = true;
-  // Guojun: disable for debug
   int i = 3;
   uint16_t readResult = BMI2_OK;
   do {
@@ -1107,9 +1108,15 @@ static bool sensorsFindBiasValue(BiasObj* bias) {
   static int32_t varianceSampleTime;
   bool foundBias = false;
 
+  // static int cnt = 0;
+
   if (bias->isBufferFilled) {
     sensorsCalculateVarianceAndMean(bias, &bias->variance, &bias->mean);
 
+    // if (1) {
+    //   DEBUG_PRINT("bias x: %f, y: %f, z: %f\n", (double) bias->variance.x, (double) bias->variance.y, (double) bias->variance.z);
+    //   // cnt = 0;
+    // }
     if (bias->variance.x < GYRO_VARIANCE_THRESHOLD_X &&
         bias->variance.y < GYRO_VARIANCE_THRESHOLD_Y &&
         bias->variance.z < GYRO_VARIANCE_THRESHOLD_Z &&
@@ -1128,7 +1135,6 @@ static bool sensorsFindBiasValue(BiasObj* bias) {
 
 bool sensorsBmi270SpiBmp388ManufacturingTest(void) {
   bool testStatus = true;
-  // Guojun: disable for debug
   if (!accelSelftest()) {
     testStatus = false;
   }
@@ -1185,7 +1191,7 @@ void sensorsBmi270SpiBmp388SetAccMode(accModes accMode) {
       }
 
       for (uint8_t i = 0; i < 3; i++) {
-        lpf2pInit(&accLpf[i],  1000, 500);
+        lpf2pInit(&accLpf[i], 1000, 500);
       }
       break;
     case ACC_MODE_FLIGHT:
@@ -1201,7 +1207,7 @@ void sensorsBmi270SpiBmp388SetAccMode(accModes accMode) {
         DEBUG_PRINT("ACC config [FAIL]\n");
       }
       for (uint8_t i = 0; i < 3; i++) {
-        lpf2pInit(&accLpf[i],  1000, ACCEL_LPF_CUTOFF_FREQ);
+        lpf2pInit(&accLpf[i], 1000, ACCEL_LPF_CUTOFF_FREQ);
       }
       break;
   }
@@ -1216,6 +1222,7 @@ static void applyAxis3fLpf(lpf2pData *data, Axis3f* in) {
 void sensorsBmi270SpiBmp388DataAvailableCallback(void) {
   portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
   imuIntTimestamp = usecTimestamp();
+
   xSemaphoreGiveFromISR(sensorsDataReady, &xHigherPriorityTaskWoken);
 
   if (xHigherPriorityTaskWoken) {
@@ -1264,6 +1271,7 @@ void __attribute__((used)) BMI270_SPI_RX_DMA_IRQHandler(void) {
   DMA_Cmd(BMI270_SPI_RX_DMA_STREAM, DISABLE);
 
   // Give the semaphore, allowing the SPI transaction to complete
+
   xSemaphoreGiveFromISR(spiRxDMAComplete, &xHigherPriorityTaskWoken);
 
   if (xHigherPriorityTaskWoken) {

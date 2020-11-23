@@ -137,14 +137,12 @@ STATIC_MEM_TASK_ALLOC(stabilizerTask, STABILIZER_TASK_STACKSIZE);
 static void stabilizerTask(void* param);
 static void testProps(sensorData_t *sensors);
 
-static void calcSensorToOutputLatency(const sensorData_t *sensorData)
-{
+static void calcSensorToOutputLatency(const sensorData_t *sensorData) {
   uint64_t outTimestamp = usecTimestamp();
   inToOutLatency = outTimestamp - sensorData->interruptTimestamp;
 }
 
-static void compressState()
-{
+static void compressState() {
   stateCompressed.x = state.position.x * 1000.0f;
   stateCompressed.y = state.position.y * 1000.0f;
   stateCompressed.z = state.position.z * 1000.0f;
@@ -190,9 +188,6 @@ void stabilizerInit(StateEstimatorType estimator) {
   }
 
   sensorsInit();
-  
-  return;
-  
   stateEstimatorInit(estimator);
   controllerInit(ControllerTypeAny);
   powerDistributionInit();
@@ -200,9 +195,8 @@ void stabilizerInit(StateEstimatorType estimator) {
   collisionAvoidanceInit();
   estimatorType = getStateEstimator();
   controllerType = getControllerType();
-
+  return;
   STATIC_MEM_TASK_CREATE(stabilizerTask, stabilizerTask, STABILIZER_TASK_NAME, NULL, STABILIZER_TASK_PRI);
-
   isInit = true;
 }
 
@@ -234,20 +228,23 @@ static void checkEmergencyStopTimeout() {
  */
 
 static void stabilizerTask(void* param) {
+
   uint32_t tick;
   uint32_t lastWakeTime;
   vTaskSetApplicationTaskTag(0, (void*)TASK_STABILIZER_ID_NBR);
 
-  //Wait for the system to be fully started to start stabilization loop
+  // Wait for the system to be fully started to start stabilization loop
   systemWaitStart();
 
   DEBUG_PRINT("Wait for sensor calibration...\n");
 
   // Wait for sensors to be calibrated
   lastWakeTime = xTaskGetTickCount();
-  while(!sensorsAreCalibrated()) {
+
+  while (!sensorsAreCalibrated()) {
     vTaskDelayUntil(&lastWakeTime, F2T(RATE_MAIN_LOOP));
   }
+
   // Initialize tick to something else then 0
   tick = 1;
 

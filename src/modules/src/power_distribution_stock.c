@@ -57,8 +57,7 @@ static struct {
 
 static uint32_t idleThrust = DEFAULT_IDLE_THRUST;
 
-void powerDistributionInit(void)
-{
+void powerDistributionInit(void) {
   motorsInit(platformConfigGetMotorMapping());
 }
 
