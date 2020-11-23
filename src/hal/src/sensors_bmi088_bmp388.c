@@ -273,7 +273,6 @@ bool sensorsBmi088Bmp388AreCalibrated()
 static void sensorsTask(void *param)
 {
   systemWaitStart();
-
   Axis3f accScaled;
   /* wait an additional second the keep bus free
    * this is only required by the z-ranger, since the
@@ -284,10 +283,13 @@ static void sensorsTask(void *param)
     if (pdTRUE == xSemaphoreTake(sensorsDataReady, portMAX_DELAY))
     {
       sensorData.interruptTimestamp = imuIntTimestamp;
-
+     
       /* get data from chosen sensors */
+      long int t1 = xTaskGetTickCount();
       sensorsGyroGet(&gyroRaw);
       sensorsAccelGet(&accelRaw);
+      long int t2 = xTaskGetTickCount();
+      DEBUG_PRINT("tick: %ld\n", t2 - t1);
 
       /* calibrate if necessary */
 #ifdef GYRO_BIAS_LIGHT_WEIGHT
@@ -900,7 +902,7 @@ void sensorsBmi088Bmp388DataAvailableCallback(void)
   portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
   imuIntTimestamp = usecTimestamp();
   xSemaphoreGiveFromISR(sensorsDataReady, &xHigherPriorityTaskWoken);
-
+  // DEBUG_PRINT("get\n");
   if (xHigherPriorityTaskWoken)
   {
     portYIELD();

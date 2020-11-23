@@ -43,8 +43,7 @@ typedef enum {
 
 void crtpserviceHandler(CRTPPacket *p);
 
-void crtpserviceInit(void)
-{
+void crtpserviceInit(void) {
   if (isInit)
     return;
 
@@ -54,15 +53,12 @@ void crtpserviceInit(void)
   isInit = true;
 }
 
-bool crtpserviceTest(void)
-{
+bool crtpserviceTest(void) {
   return isInit;
 }
 
-void crtpserviceHandler(CRTPPacket *p)
-{
-  switch (p->channel)
-  {
+void crtpserviceHandler(CRTPPacket *p) {
+  switch (p->channel) {
     case linkEcho:
       crtpSendPacket(p);
       break;

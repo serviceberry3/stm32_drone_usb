@@ -64,6 +64,7 @@ static platformConfig_t configs[] = {
     .motorMap = motorMapBoltBrushless,
   },
   #endif
+  #ifdef SENSOR_INCLUDED_BMI270_SPI_BMP388
   {
     .deviceType = "F407",
     .deviceTypeName = "Crazyflie F407",
@@ -71,6 +72,7 @@ static platformConfig_t configs[] = {
     .physicalLayoutAntennasAreClose = false,
     .motorMap = motorMapDefaultBrushed,
   },
+  #endif
 };
 
 const platformConfig_t* platformGetListOfConfigurations(int* nrOfConfigs) {

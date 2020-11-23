@@ -134,7 +134,7 @@
 
 /* Defines and buffers for full duplex SPI DMA transactions */
 /* The buffers must not be placed in CCM */
-#define SPI_MAX_DMA_TRANSACTION_SIZE    15
+#define SPI_MAX_DMA_TRANSACTION_SIZE    30
 static uint8_t spiTxBuffer[SPI_MAX_DMA_TRANSACTION_SIZE + 1];
 static uint8_t spiRxBuffer[SPI_MAX_DMA_TRANSACTION_SIZE + 1];
 static xSemaphoreHandle spiTxDMAComplete;
@@ -241,6 +241,7 @@ static char spiReceiveByte() {
 }
 
 static void spiDMATransaction(uint8_t reg_addr, uint8_t *reg_data, uint16_t len) {
+
   ASSERT(len < SPI_MAX_DMA_TRANSACTION_SIZE);
 
   // Disable peripheral before setting up for duplex DMA
@@ -388,9 +389,19 @@ static bstdr_ret_t i2c_burst_write(uint8_t dev_id, uint8_t reg_addr, uint8_t *re
 static void bmi270_us_delay(uint32_t period, void *intf_ptr) {
   /**< Delay code comes */
   uint32_t period_ms = period / 1000.0;
-  if (period_ms < 1) period_ms = 1;
-  vTaskDelay(M2T(period_ms));
+  if (period < 1000) {
+    // TIM_SetCounter(TIM13, 0);
+    // while (TIM_GetCounter(TIM13) < period);
+    // for (int i = 0; i < period; i++) {}
+    vTaskDelay(M2T(1));
+  } else
+    vTaskDelay(M2T(period_ms));
 }
+
+// static void delay_us(uint32_t us, void *intf_ptr) {
+//   TIM_SetCounter(TIM13, 0);
+//   while (TIM_GetCounter(TIM13) < us);
+// }
 
 static void bmi388_ms_delay(uint32_t period) {
   /**< Delay code comes */
@@ -412,7 +423,7 @@ static void spiConfigure(void) {
   SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
   SPI_InitStructure.SPI_CRCPolynomial = 0; // Not used
 
-  SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_4; //~10.5 MHz
+  SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_4; // ~10.5 MHz
   SPI_Init(BMI270_SPI, &SPI_InitStructure);
   /* Enable the SPI  */
   SPI_Cmd(BMI270_SPI, ENABLE);
@@ -573,13 +584,18 @@ bool sensorsBmi270SpiBmp388AreCalibrated() {
 static void sensorsTask(void *param) {
   systemWaitStart();
   Axis3f accScaled;
+  static int cnt = 0;
   /* wait an additional second the keep bus free
    * this is only required by the z-ranger, since the
    * configuration will be done after system start-up */
   // vTaskDelayUntil(&lastWakeTime, M2T(1500));
   DEBUG_PRINT("sensor task begins\n");
   while (1) {
-    DEBUG_PRINT("sensor task loop p1\n");
+    DEBUG_PRINT("get 1\n");
+    if (cnt++ == 800) {
+      DEBUG_PRINT("get 800\n");
+      cnt = 0;
+    }
     if (pdTRUE == xSemaphoreTake(sensorsDataReady, portMAX_DELAY)) {
       sensorData.interruptTimestamp = imuIntTimestamp;
       /* get data from chosen sensors */
@@ -647,13 +663,30 @@ static void sensorsDeviceInit(void) {
   // Wait for sensors to startup
   vTaskDelay(M2T(SENSORS_STARTUP_TIME_MS));
   
+
+  // init TIM13
+  // TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
+  // TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
+  // RCC_APB1PeriphResetCmd(RCC_APB1Periph_TIM13, ENABLE);
+  // TIM_TimeBaseStructure.TIM_Period = 0xffff - 1;
+  // TIM_TimeBaseStructure.TIM_Prescaler = 83;
+  // TIM_TimeBaseStructure.TIM_ClockDivision = 0;
+  // TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+  // TIM_TimeBaseStructure.TIM_RepetitionCounter = 0;
+  // // if (0)
+  // TIM_TimeBaseInit(TIM13, &TIM_TimeBaseStructure);
+  // TIM_Cmd(TIM13, ENABLE);
+
+
   /* BMI270 */
+  DEBUG_PRINT("Begin BMI270 init\n");
   bmi270Dev.intf = BMI2_SPI_INTF;
   bmi270Dev.read = bmi_spi_read;
   bmi270Dev.write = bmi_spi_write;
-  bmi270Dev.read_write_len = 1024;
+  bmi270Dev.read_write_len = 30;
   bmi270Dev.config_file_ptr = NULL;
   bmi270Dev.delay_us = bmi270_us_delay;
+  bmi270Dev.aps_status = BMI2_DISABLE;
   rslt = bmi270_init(&bmi270Dev);
 
   if (rslt != BMI2_OK) {
@@ -671,12 +704,6 @@ static void sensorsDeviceInit(void) {
     rslt = bmi2_sensor_enable(sens_list, 2, &bmi270Dev);
     if (rslt != BMI2_OK) {
       DEBUG_PRINT("BMI270 enable [FAIL]\n");
-      isInit = false;
-    }
-
-    rslt = bmi2_map_data_int(BMI2_DRDY_INT, BMI2_INT2, &bmi270Dev);
-    if (rslt != BMI2_OK) {
-      DEBUG_PRINT("BMI270 map int [FAIL]\n");
       isInit = false;
     }
 
@@ -713,6 +740,21 @@ static void sensorsDeviceInit(void) {
     if (rslt != BMI2_OK) {
       DEBUG_PRINT("BMI270 set int [FAIL]\n");
       isInit = false;
+    }
+
+    bmi270Dev.delay_us(50000, NULL);
+    rslt = bmi2_map_data_int(BMI2_DRDY_INT, BMI2_INT2, &bmi270Dev);
+    if (rslt != BMI2_OK) {
+      DEBUG_PRINT("BMI270 map int [FAIL]\n");
+      isInit = false;
+    }
+    bmi270Dev.delay_us(100000, NULL);
+    rslt = sensorsAccelGet(&accelRaw);
+    if (rslt != BMI2_OK) {
+      DEBUG_PRINT("BMI270 get accel data [FAIL]\n");
+      isInit = false;
+    } else {
+      DEBUG_PRINT("Read accel: %d %d %d\n", accelRaw.x, accelRaw.y, accelRaw.z);
     }
 
     DEBUG_PRINT("BMI270 int finish [OK]\n");
@@ -863,7 +905,7 @@ static void sensorsTaskInit(void) {
   gyroDataQueue = STATIC_MEM_QUEUE_CREATE(gyroDataQueue);
   magnetometerDataQueue = STATIC_MEM_QUEUE_CREATE(magnetometerDataQueue);
   barometerDataQueue = STATIC_MEM_QUEUE_CREATE(barometerDataQueue);
-
+  // return;
   STATIC_MEM_TASK_CREATE(sensorsTask, sensorsTask, SENSORS_TASK_NAME, NULL, SENSORS_TASK_PRI);
 }
 
@@ -902,6 +944,7 @@ void sensorsBmi270SpiBmp388Init(void) {
   spiDMAInit();
 
   sensorsBiasObjInit(&gyroBiasRunning);
+  
   sensorsDeviceInit();
   sensorsInterruptInit();
   sensorsTaskInit();
@@ -1222,9 +1265,13 @@ static void applyAxis3fLpf(lpf2pData *data, Axis3f* in) {
 void sensorsBmi270SpiBmp388DataAvailableCallback(void) {
   portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
   imuIntTimestamp = usecTimestamp();
-
+  static int cnt = 0;
+  if (cnt++ == 800) {
+    DEBUG_PRINT("aval 800\n");
+    cnt = 0;
+  }
   xSemaphoreGiveFromISR(sensorsDataReady, &xHigherPriorityTaskWoken);
-
+  
   if (xHigherPriorityTaskWoken) {
     portYIELD();
   }
@@ -1256,7 +1303,6 @@ void __attribute__((used)) BMI270_SPI_TX_DMA_IRQHandler(void) {
 
 void __attribute__((used)) BMI270_SPI_RX_DMA_IRQHandler(void) {
   portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
-
   // Stop and cleanup DMA stream
   DMA_ITConfig(BMI270_SPI_RX_DMA_STREAM, DMA_IT_TC, DISABLE);
   DMA_ClearITPendingBit(BMI270_SPI_RX_DMA_STREAM, BMI270_SPI_RX_DMA_FLAG_TCIF);

@@ -60,6 +60,7 @@
 // #define UART2_GPIO_RX_PIN      GPIO_Pin_3
 // #define UART2_GPIO_AF_TX_PIN   GPIO_PinSource2
 // #define UART2_GPIO_AF_RX_PIN   GPIO_PinSource3
+
 #define UART2_GPIO_AF_TX       GPIO_AF_USART2
 #define UART2_GPIO_AF_RX       GPIO_AF_USART2
 

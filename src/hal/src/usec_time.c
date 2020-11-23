@@ -32,8 +32,7 @@
 
 static uint32_t usecTimerHighCount;
 
-void initUsecTimer(void)
-{
+void initUsecTimer(void) {
   usecTimerHighCount = 0;
 
   TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
@@ -63,8 +62,7 @@ void initUsecTimer(void)
   TIM_Cmd(TIM7, ENABLE);
 }
 
-uint64_t usecTimestamp(void)
-{
+uint64_t usecTimestamp(void) {
   uint32_t high0;
   __atomic_load(&usecTimerHighCount, &high0, __ATOMIC_SEQ_CST);
   uint32_t low = TIM7->CNT;
@@ -72,16 +70,14 @@ uint64_t usecTimestamp(void)
   __atomic_load(&usecTimerHighCount, &high, __ATOMIC_SEQ_CST);
 
   // There was no increment in between
-  if (high == high0)
-  {
-    return (((uint64_t)high) << 16) + low;
+  if (high == high0) {
+    return (((uint64_t) high) << 16) + low;
   }
   // There was an increment, but we don't expect another one soon
-  return (((uint64_t)high) << 16) + TIM7->CNT;
+  return (((uint64_t) high) << 16) + TIM7->CNT;
 }
 
-void __attribute__((used)) TIM7_IRQHandler(void)
-{
+void __attribute__((used)) TIM7_IRQHandler(void) {
   TIM_ClearITPendingBit(TIM7, TIM_IT_Update);
 
   __sync_fetch_and_add(&usecTimerHighCount, 1);

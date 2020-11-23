@@ -41,6 +41,7 @@
 /*!  @name          Header Files                                  */
 /******************************************************************************/
 #include "bmi2.h"
+#include "debug.h"
 
 /***************************************************************************/
 
@@ -4097,7 +4098,10 @@ int8_t bmi2_get_regs(uint8_t reg_addr, uint8_t *data, uint16_t len, struct bmi2_
         else
         {
             dev->intf_rslt = dev->read(reg_addr, temp_buf, temp_len, dev->intf_ptr);
-            dev->delay_us(20, dev->intf_ptr);
+            // dev->delay_us(20, dev->intf_ptr);
+            // freeRTOS only supports 1ms delay
+            int cnt = 1;
+            for (int i = 0; i < 10; i++) cnt++;
         }
 
         if (dev->intf_rslt == BMI2_INTF_RET_SUCCESS)
@@ -4840,7 +4844,7 @@ int8_t bmi2_get_sensor_data(struct bmi2_sensor_data *sensor_data, uint8_t n_sens
             /* Enable Advance power save if disabled while
              * configuring and not when already disabled
              */
-            if ((aps_stat == BMI2_ENABLE) && (rslt == BMI2_OK))
+            if ((aps_stat == BMI2_ENABLE) && (rslt == BMI2_OK) && 0)
             {
                 rslt = bmi2_set_adv_power_save(BMI2_ENABLE, dev);
             }

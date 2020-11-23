@@ -144,8 +144,7 @@ void systemInit(void) {
 }
 
 bool systemTest() {
-  bool pass=isInit;
-
+  bool pass = isInit;
   pass &= ledseqTest();
   pass &= pmTest();
   pass &= workerTest();
@@ -183,11 +182,11 @@ void systemTask(void *arg) {
   estimator = deckGetRequiredEstimator();
   stabilizerInit(estimator);
 
-  DEBUG_PRINT("SYSTEM START\n");
-  systemStart();
-  workerLoop();
-  while (1)
-    vTaskDelay(portMAX_DELAY);
+  // DEBUG_PRINT("SYSTEM START\n");
+  // systemStart();
+  // workerLoop();
+  // while (1)
+  //   vTaskDelay(portMAX_DELAY);
 
   
   if (deckGetRequiredLowInterferenceRadioMode() && platformConfigPhysicalLayoutAntennasAreClose()) {
@@ -208,11 +207,11 @@ void systemTask(void *arg) {
   pass &= stabilizerTest();
   pass &= estimatorKalmanTaskTest();
   pass &= deckTest();
-  pass &= soundTest();
+  // pass &= soundTest();
   pass &= memTest();
   pass &= watchdogNormalStartTest();
   pass &= peerLocalizationTest();
-
+  if (pass == false) DEBUG_PRINT("sys failed3\n");
   // Start the firmware
   if (pass) {
     selftestPassed = 1;
