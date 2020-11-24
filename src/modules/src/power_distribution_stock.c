@@ -121,7 +121,7 @@ void powerDistribution(const control_t *control) {
     // motorsSetRatio(MOTOR_M2, motorPower.m2);
     // motorsSetRatio(MOTOR_M3, motorPower.m3);
     // motorsSetRatio(MOTOR_M4, motorPower.m4);
-    // DEBUG_PRINT("run pd\n");
+    // Guojun: diable for debug
     motorsSetRatio(MOTOR_M1, 1000);
     motorsSetRatio(MOTOR_M2, 1000);
     motorsSetRatio(MOTOR_M3, 1000);

@@ -155,8 +155,7 @@ void crtpTxTask(void *param) {
 }
 
 // Guojn: define struct here for debug
-struct CommanderCrtpLegacyValues
-{
+struct CommanderCrtpLegacyValues {
   float roll;       // deg
   float pitch;      // deg
   float yaw;        // deg
@@ -168,12 +167,12 @@ void crtpRxTask(void *param) {
   vTaskDelay(M2T(5000));
   while (1) {
     // Guojun: fake packet
-    // p.port = CRTP_PORT_SETPOINT;
-    // p.channel = 0;
-    // struct CommanderCrtpLegacyValues *values = (struct CommanderCrtpLegacyValues*) p.data;
-    // values->thrust = 100;
-    // callbacks[p.port](&p);
-    // vTaskDelay(M2T(200));
+    p.port = CRTP_PORT_SETPOINT;
+    p.channel = 0;
+    struct CommanderCrtpLegacyValues *values = (struct CommanderCrtpLegacyValues*) p.data;
+    values->thrust = 100;
+    callbacks[p.port](&p);
+    vTaskDelay(M2T(200));
 
     if (link != &nopLink) {
       if (!link->receivePacket(&p)) {

@@ -111,7 +111,10 @@ static void commanderCrtpCB(CRTPPacket* pk) {
   static setpoint_t setpoint;
 
   if (pk->port == CRTP_PORT_SETPOINT && pk->channel == 0) {
+
     crtpCommanderRpytDecodeSetpoint(&setpoint, pk);
+    DEBUG_PRINT("crtpCB: %f\n", (double) setpoint.thrust);
+
     commanderSetSetpoint(&setpoint, COMMANDER_PRIORITY_CRTP);
   } else if (pk->port == CRTP_PORT_SETPOINT_GENERIC) {
     switch (pk->channel) {

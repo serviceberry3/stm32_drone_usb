@@ -139,7 +139,7 @@ void motorsInit(const MotorPerifDef** motorMapSelect) {
     // PWM channels configuration (All identical!)
     TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
     TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-    TIM_OCInitStructure.TIM_Pulse = 40;
+    TIM_OCInitStructure.TIM_Pulse = 30;
     TIM_OCInitStructure.TIM_OCPolarity = motorMap[i]->timPolarity;
     TIM_OCInitStructure.TIM_OCIdleState = TIM_OCIdleState_Set;
 
@@ -166,13 +166,11 @@ void motorsInit(const MotorPerifDef** motorMapSelect) {
   motorsSetRatio(MOTOR_M4, 0);
 }
 
-void motorsDeInit(const MotorPerifDef** motorMapSelect)
-{
+void motorsDeInit(const MotorPerifDef** motorMapSelect) {
   int i;
   GPIO_InitTypeDef GPIO_InitStructure;
 
-  for (i = 0; i < NBR_OF_MOTORS; i++)
-  {
+  for (i = 0; i < NBR_OF_MOTORS; i++) {
     // Configure default
     GPIO_StructInit(&GPIO_InitStructure);
     GPIO_InitStructure.GPIO_Pin = motorMap[i]->gpioPin;
@@ -210,7 +208,7 @@ bool motorsTest(void) {
 
 // Ithrust is thrust mapped for 65536 <==> 60 grams
 void motorsSetRatio(uint32_t id, uint16_t ithrust) {
-  // Guojun: disable for debug
+  // Guojun: disable for test
   return;
   if (isInit) {
     uint16_t ratio;
@@ -253,7 +251,7 @@ int motorsGetRatio(uint32_t id) {
 }
 
 void motorsBeep(int id, bool enable, uint16_t frequency, uint16_t ratio) {
-  // Guojun: disable for debug
+  // Guojun: disable for test
   return;
   TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
 

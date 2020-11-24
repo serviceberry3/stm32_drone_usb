@@ -116,8 +116,7 @@ static void yawModeUpdate(setpoint_t *setpoint)
   }
 }
 
-void crtpCommanderRpytDecodeSetpoint(setpoint_t *setpoint, CRTPPacket *pk)
-{
+void crtpCommanderRpytDecodeSetpoint(setpoint_t *setpoint, CRTPPacket *pk) {
   struct CommanderCrtpLegacyValues *values = (struct CommanderCrtpLegacyValues*) pk->data;
 
   if (commanderGetActivePriority() == COMMANDER_PRIORITY_DISABLE) {
@@ -126,7 +125,8 @@ void crtpCommanderRpytDecodeSetpoint(setpoint_t *setpoint, CRTPPacket *pk)
   if (values->thrust == 0) {
     thrustLocked = false;
   }
-
+  // Guojun: set for debug
+  thrustLocked = false;
   // Thrust
   uint16_t rawThrust = values->thrust;
 
