@@ -588,9 +588,12 @@ static void sensorsTask(void *param) {
    * this is only required by the z-ranger, since the
    * configuration will be done after system start-up */
   // vTaskDelayUntil(&lastWakeTime, M2T(1500));
-  DEBUG_PRINT("sensor task begins\n");
+  static int cnt = 0;
   while (1) {
-
+    if (cnt++ == 400) {
+      // DEBUG_PRINT("x: %d, y: %d, z: %d\n", accelRaw.x, accelRaw.y, accelRaw.z);
+      cnt = 0;
+    }
     if (pdTRUE == xSemaphoreTake(sensorsDataReady, portMAX_DELAY)) {
       sensorData.interruptTimestamp = imuIntTimestamp;
       /* get data from chosen sensors */
@@ -1267,6 +1270,12 @@ void sensorsBmi270SpiBmp388DataAvailableCallback(void) {
   imuIntTimestamp = usecTimestamp();
 
   xSemaphoreGiveFromISR(sensorsDataReady, &xHigherPriorityTaskWoken);
+
+  static int cnt = 0;
+  if (cnt++ == 800) {
+    DEBUG_PRINT("aval 800\n");
+    cnt = 0;
+  }
   
   if (xHigherPriorityTaskWoken) {
     portYIELD();

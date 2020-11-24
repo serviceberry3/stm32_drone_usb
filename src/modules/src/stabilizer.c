@@ -243,19 +243,22 @@ static void stabilizerTask(void* param) {
 
   while (!sensorsAreCalibrated()) {
     vTaskDelayUntil(&lastWakeTime, F2T(RATE_MAIN_LOOP));
+    vTaskDelay(1000);
     DEBUG_PRINT("stablizer once\n");
-    vTaskDelay(M2T(1000));
   }
 
   // Initialize tick to something else then 0
   tick = 1;
 
-  rateSupervisorInit(&rateSupervisorContext, xTaskGetTickCount(), M2T(1000), 997, 1003, 1);
+  rateSupervisorInit(&rateSupervisorContext, xTaskGetTickCount(), M2T(1000), 780, 820, 1);
+  // rateSupervisorInit(&rateSupervisorContext, xTaskGetTickCount(), M2T(1000), 997, 1003, 1);
 
   DEBUG_PRINT("Ready to fly.\n");
 
+  // static int cnt = 0;
+
   while (1) {
-    // The sensor should unlock at 1kHz
+    // The sensor should unlock at 800Hz
     sensorsWaitDataReady();
 
     if (startPropTest != false) {
@@ -300,7 +303,7 @@ static void stabilizerTask(void* param) {
       }
 
       // Log data to uSD card if configured
-      if (   usddeckLoggingEnabled()
+      if (usddeckLoggingEnabled()
           && usddeckLoggingMode() == usddeckLoggingMode_SynchronousStabilizer
           && RATE_DO_EXECUTE(usddeckFrequency(), tick)) {
         usddeckTriggerLogging();

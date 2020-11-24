@@ -32,6 +32,8 @@
 #include "commander.h"
 #include "crtp.h"
 
+#include "debug.h"
+
 
 static bool isInit;
 
@@ -41,7 +43,6 @@ void crtpCommanderInit(void) {
   if (isInit) {
     return;
   }
-
   crtpInit();
   crtpRegisterPortCB(CRTP_PORT_SETPOINT, commanderCrtpCB);
   crtpRegisterPortCB(CRTP_PORT_SETPOINT_GENERIC, commanderCrtpCB);
@@ -109,7 +110,7 @@ const static metaCommandDecoder_t metaCommandDecoders[] = {
 static void commanderCrtpCB(CRTPPacket* pk) {
   static setpoint_t setpoint;
 
-  if(pk->port == CRTP_PORT_SETPOINT && pk->channel == 0) {
+  if (pk->port == CRTP_PORT_SETPOINT && pk->channel == 0) {
     crtpCommanderRpytDecodeSetpoint(&setpoint, pk);
     commanderSetSetpoint(&setpoint, COMMANDER_PRIORITY_CRTP);
   } else if (pk->port == CRTP_PORT_SETPOINT_GENERIC) {

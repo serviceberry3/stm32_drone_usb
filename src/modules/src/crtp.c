@@ -42,6 +42,7 @@
 #include "static_mem.h"
 
 #include "log.h"
+#include "debug.h"
 
 
 static bool isInit;
@@ -136,7 +137,7 @@ int crtpGetFreeTxQueuePackets(void) {
 void crtpTxTask(void *param) {
   CRTPPacket p;
 
-  while (true) {
+  while (1) {
     if (link != &nopLink) {
       if (xQueueReceive(txQueue, &p, portMAX_DELAY) == pdTRUE) {
         // Keep testing, if the link changes to USB it will go though
@@ -153,10 +154,27 @@ void crtpTxTask(void *param) {
   }
 }
 
+// Guojn: define struct here for debug
+struct CommanderCrtpLegacyValues
+{
+  float roll;       // deg
+  float pitch;      // deg
+  float yaw;        // deg
+  uint16_t thrust;
+} __attribute__((packed));
+
 void crtpRxTask(void *param) {
   CRTPPacket p;
+  vTaskDelay(M2T(5000));
+  while (1) {
+    // Guojun: fake packet
+    // p.port = CRTP_PORT_SETPOINT;
+    // p.channel = 0;
+    // struct CommanderCrtpLegacyValues *values = (struct CommanderCrtpLegacyValues*) p.data;
+    // values->thrust = 100;
+    // callbacks[p.port](&p);
+    // vTaskDelay(M2T(200));
 
-  while (true) {
     if (link != &nopLink) {
       if (!link->receivePacket(&p)) {
         if (queues[p.port]) {
@@ -180,7 +198,7 @@ void crtpRxTask(void *param) {
 }
 
 void crtpRegisterPortCB(int port, CrtpCallback cb) {
-  if (port>CRTP_NBR_OF_PORTS)
+  if (port > CRTP_NBR_OF_PORTS)
     return;
 
   callbacks[port] = cb;

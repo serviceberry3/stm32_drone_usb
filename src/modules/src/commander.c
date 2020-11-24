@@ -68,8 +68,7 @@ void commanderInit(void) {
   isInit = true;
 }
 
-void commanderSetSetpoint(setpoint_t *setpoint, int priority)
-{
+void commanderSetSetpoint(setpoint_t *setpoint, int priority) {
   int currentPriority;
 
   const BaseType_t peekResult = xQueuePeek(priorityQueue, &currentPriority, 0);
@@ -86,8 +85,7 @@ void commanderSetSetpoint(setpoint_t *setpoint, int priority)
   }
 }
 
-void commanderNotifySetpointsStop(int remainValidMillisecs)
-{
+void commanderNotifySetpointsStop(int remainValidMillisecs) {
   uint32_t currentTime = xTaskGetTickCount();
   int timeSetback = MIN(
     COMMANDER_WDT_TIMEOUT_SHUTDOWN - M2T(remainValidMillisecs),
@@ -99,8 +97,7 @@ void commanderNotifySetpointsStop(int remainValidMillisecs)
   crtpCommanderHighLevelTellState(&lastState);
 }
 
-void commanderGetSetpoint(setpoint_t *setpoint, const state_t *state)
-{
+void commanderGetSetpoint(setpoint_t *setpoint, const state_t *state) {
   xQueuePeek(setpointQueue, setpoint, 0);
   lastUpdate = setpoint->timestamp;
   uint32_t currentTime = xTaskGetTickCount();
@@ -131,18 +128,15 @@ void commanderGetSetpoint(setpoint_t *setpoint, const state_t *state)
   lastState = *state;
 }
 
-bool commanderTest(void)
-{
+bool commanderTest(void) {
   return isInit;
 }
 
-uint32_t commanderGetInactivityTime(void)
-{
+uint32_t commanderGetInactivityTime(void) {
   return xTaskGetTickCount() - lastUpdate;
 }
 
-int commanderGetActivePriority(void)
-{
+int commanderGetActivePriority(void) {
   int priority;
 
   const BaseType_t peekResult = xQueuePeek(priorityQueue, &priority, 0);

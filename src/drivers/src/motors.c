@@ -112,8 +112,7 @@ void motorsInit(const MotorPerifDef** motorMapSelect) {
 
     // If there is a power switch, as on Bolt, enable power to ESC by
     // switching on mosfet.
-    if (motorMap[i]->gpioPowerswitchPin != 0)
-    {
+    if (motorMap[i]->gpioPowerswitchPin != 0) {
       GPIO_StructInit(&GPIO_InitStructure);
       GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
       GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
@@ -144,7 +143,7 @@ void motorsInit(const MotorPerifDef** motorMapSelect) {
     // PWM channels configuration (All identical!)
     TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
     TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-    TIM_OCInitStructure.TIM_Pulse = 0;
+    TIM_OCInitStructure.TIM_Pulse = 120;
     TIM_OCInitStructure.TIM_OCPolarity = motorMap[i]->timPolarity;
     TIM_OCInitStructure.TIM_OCIdleState = TIM_OCIdleState_Set;
 
@@ -158,8 +157,7 @@ void motorsInit(const MotorPerifDef** motorMapSelect) {
   }
 
   // Start the timers
-  for (i = 0; i < NBR_OF_MOTORS; i++)
-  {
+  for (i = 0; i < NBR_OF_MOTORS; i++) {
     TIM_Cmd(motorMap[i]->tim, ENABLE);
   }
 
@@ -192,14 +190,11 @@ void motorsDeInit(const MotorPerifDef** motorMapSelect)
   }
 }
 
-bool motorsTest(void)
-{
+bool motorsTest(void) {
   int i;
 
-  for (i = 0; i < sizeof(MOTORS) / sizeof(*MOTORS); i++)
-  {
-    if (motorMap[i]->drvType == BRUSHED)
-    {
+  for (i = 0; i < sizeof(MOTORS) / sizeof(*MOTORS); i++) {
+    if (motorMap[i]->drvType == BRUSHED) {
 #ifdef ACTIVATE_STARTUP_SOUND
       motorsBeep(MOTORS[i], true, testsound[i], (uint16_t)(MOTORS_TIM_BEEP_CLK_FREQ / A4)/ 20);
       vTaskDelay(M2T(MOTORS_TEST_ON_TIME_MS));
@@ -218,8 +213,9 @@ bool motorsTest(void)
 }
 
 // Ithrust is thrust mapped for 65536 <==> 60 grams
-void motorsSetRatio(uint32_t id, uint16_t ithrust)
-{
+void motorsSetRatio(uint32_t id, uint16_t ithrust) {
+  // Guojun: disable for debug
+  return;
   if (isInit) {
     uint16_t ratio;
 
@@ -228,8 +224,7 @@ void motorsSetRatio(uint32_t id, uint16_t ithrust)
     ratio = ithrust;
 
   #ifdef ENABLE_THRUST_BAT_COMPENSATED
-    if (motorMap[id]->drvType == BRUSHED)
-    {
+    if (motorMap[id]->drvType == BRUSHED) {
       float thrust = ((float)ithrust / 65536.0f) * 60;
       float volts = -0.0006239f * thrust * thrust + 0.088f * thrust;
       float supply_voltage = pmGetBatteryVoltage();
@@ -240,49 +235,40 @@ void motorsSetRatio(uint32_t id, uint16_t ithrust)
 
     }
   #endif
-    if (motorMap[id]->drvType == BRUSHLESS)
-    {
+    if (motorMap[id]->drvType == BRUSHLESS) {
       motorMap[id]->setCompare(motorMap[id]->tim, motorsBLConv16ToBits(ratio));
-    }
-    else
-    {
+    } else {
       motorMap[id]->setCompare(motorMap[id]->tim, motorsConv16ToBits(ratio));
     }
   }
 }
 
-int motorsGetRatio(uint32_t id)
-{
+int motorsGetRatio(uint32_t id) {
   int ratio;
 
   ASSERT(id < NBR_OF_MOTORS);
-  if (motorMap[id]->drvType == BRUSHLESS)
-  {
+  if (motorMap[id]->drvType == BRUSHLESS) {
     ratio = motorsBLConvBitsTo16(motorMap[id]->getCompare(motorMap[id]->tim));
-  }
-  else
-  {
+  } else {
     ratio = motorsConvBitsTo16(motorMap[id]->getCompare(motorMap[id]->tim));
   }
 
   return ratio;
 }
 
-void motorsBeep(int id, bool enable, uint16_t frequency, uint16_t ratio)
-{
+void motorsBeep(int id, bool enable, uint16_t frequency, uint16_t ratio) {
+  // Guojun: disable for debug
+  return;
   TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
 
   ASSERT(id < NBR_OF_MOTORS);
 
   TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
 
-  if (enable)
-  {
+  if (enable) {
     TIM_TimeBaseStructure.TIM_Prescaler = (5 - 1);
     TIM_TimeBaseStructure.TIM_Period = (uint16_t)(MOTORS_TIM_BEEP_CLK_FREQ / frequency);
-  }
-  else
-  {
+  } else {
     TIM_TimeBaseStructure.TIM_Period = motorMap[id]->timPeriod;
     TIM_TimeBaseStructure.TIM_Prescaler = motorMap[id]->timPrescaler;
   }

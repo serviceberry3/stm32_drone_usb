@@ -118,7 +118,7 @@ static void yawModeUpdate(setpoint_t *setpoint)
 
 void crtpCommanderRpytDecodeSetpoint(setpoint_t *setpoint, CRTPPacket *pk)
 {
-  struct CommanderCrtpLegacyValues *values = (struct CommanderCrtpLegacyValues*)pk->data;
+  struct CommanderCrtpLegacyValues *values = (struct CommanderCrtpLegacyValues*) pk->data;
 
   if (commanderGetActivePriority() == COMMANDER_PRIORITY_DISABLE) {
     thrustLocked = true;
@@ -152,8 +152,8 @@ void crtpCommanderRpytDecodeSetpoint(setpoint_t *setpoint, CRTPPacket *pk)
     setpoint->mode.roll = modeDisable;
     setpoint->mode.pitch = modeDisable;
 
-    setpoint->velocity.x = values->pitch/30.0f;
-    setpoint->velocity.y = values->roll/30.0f;
+    setpoint->velocity.x = values->pitch / 30.0f;
+    setpoint->velocity.y = values->roll / 30.0f;
     setpoint->attitude.roll  = 0;
     setpoint->attitude.pitch = 0;
   } else if (posSetMode && values->thrust != 0) {
@@ -166,7 +166,7 @@ void crtpCommanderRpytDecodeSetpoint(setpoint_t *setpoint, CRTPPacket *pk)
 
     setpoint->position.x = -values->pitch;
     setpoint->position.y = values->roll;
-    setpoint->position.z = values->thrust/1000.0f;
+    setpoint->position.z = values->thrust / 1000.0f;
 
     setpoint->attitude.roll  = 0;
     setpoint->attitude.pitch = 0;
