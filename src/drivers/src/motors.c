@@ -65,23 +65,19 @@ static bool isInit = false;
 
 /* Private functions */
 
-static uint16_t motorsBLConvBitsTo16(uint16_t bits)
-{
+static uint16_t motorsBLConvBitsTo16(uint16_t bits) {
   return (0xFFFF * (bits - MOTORS_BL_PWM_CNT_FOR_HIGH) / MOTORS_BL_PWM_CNT_FOR_HIGH);
 }
 
-static uint16_t motorsBLConv16ToBits(uint16_t bits)
-{
+static uint16_t motorsBLConv16ToBits(uint16_t bits) {
   return (MOTORS_BL_PWM_CNT_FOR_HIGH + ((bits * MOTORS_BL_PWM_CNT_FOR_HIGH) / 0xFFFF));
 }
 
-static uint16_t motorsConvBitsTo16(uint16_t bits)
-{
+static uint16_t motorsConvBitsTo16(uint16_t bits) {
   return ((bits) << (16 - MOTORS_PWM_BITS));
 }
 
-static uint16_t motorsConv16ToBits(uint16_t bits)
-{
+static uint16_t motorsConv16ToBits(uint16_t bits) {
   return ((bits) >> (16 - MOTORS_PWM_BITS) & ((1 << MOTORS_PWM_BITS) - 1));
 }
 
@@ -143,7 +139,7 @@ void motorsInit(const MotorPerifDef** motorMapSelect) {
     // PWM channels configuration (All identical!)
     TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
     TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-    TIM_OCInitStructure.TIM_Pulse = 120;
+    TIM_OCInitStructure.TIM_Pulse = 40;
     TIM_OCInitStructure.TIM_OCPolarity = motorMap[i]->timPolarity;
     TIM_OCInitStructure.TIM_OCIdleState = TIM_OCIdleState_Set;
 

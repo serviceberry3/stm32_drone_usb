@@ -13,7 +13,7 @@ cflie.*
 version.c
 tags
 
-/cf2.*
+# /cf2.*
 /tag.*
 *.gch
 
