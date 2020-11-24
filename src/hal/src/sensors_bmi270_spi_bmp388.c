@@ -584,18 +584,13 @@ bool sensorsBmi270SpiBmp388AreCalibrated() {
 static void sensorsTask(void *param) {
   systemWaitStart();
   Axis3f accScaled;
-  static int cnt = 0;
   /* wait an additional second the keep bus free
    * this is only required by the z-ranger, since the
    * configuration will be done after system start-up */
   // vTaskDelayUntil(&lastWakeTime, M2T(1500));
   DEBUG_PRINT("sensor task begins\n");
   while (1) {
-    DEBUG_PRINT("get 1\n");
-    if (cnt++ == 800) {
-      DEBUG_PRINT("get 800\n");
-      cnt = 0;
-    }
+
     if (pdTRUE == xSemaphoreTake(sensorsDataReady, portMAX_DELAY)) {
       sensorData.interruptTimestamp = imuIntTimestamp;
       /* get data from chosen sensors */
@@ -736,6 +731,10 @@ static void sensorsDeviceInit(void) {
     data_int_cfg.pin_cfg[0].od = BMI2_INT_PUSH_PULL;            // OpenDrain disabled
     data_int_cfg.pin_cfg[0].lvl = BMI2_INT_ACTIVE_HIGH;         // Signal High Active
     data_int_cfg.pin_cfg[0].input_en = BMI2_INT_INPUT_DISABLE;  // Input Disabled
+    data_int_cfg.pin_cfg[1].output_en = BMI2_INT_OUTPUT_ENABLE; // Output enabled
+    data_int_cfg.pin_cfg[1].od = BMI2_INT_PUSH_PULL;            // OpenDrain disabled
+    data_int_cfg.pin_cfg[1].lvl = BMI2_INT_ACTIVE_HIGH;         // Signal High Active
+    data_int_cfg.pin_cfg[1].input_en = BMI2_INT_INPUT_DISABLE;  // Input Disabled
     rslt = bmi2_set_int_pin_config(&data_int_cfg, &bmi270Dev);
     if (rslt != BMI2_OK) {
       DEBUG_PRINT("BMI270 set int [FAIL]\n");
@@ -950,7 +949,6 @@ void sensorsBmi270SpiBmp388Init(void) {
   sensorsTaskInit();
 }
 
-
 static bool accelSelftest() {
   bool testStatus = true;
   int i = 3;
@@ -962,16 +960,18 @@ static bool accelSelftest() {
   if ((readResult != BMI2_OK) || (accelRaw.x == 0 && accelRaw.y == 0 && accelRaw.z == 0)) {
     DEBUG_PRINT("BMI270 accel returning x = 0 y = 0 z = 0 [FAILED: %d]\n", readResult);
     testStatus = false;
-  }
-
-  int8_t accelResult = 0;
-  accelResult = bmi2_perform_accel_self_test(&bmi270Dev);
-  if (accelResult == BMI2_OK) {
-    DEBUG_PRINT("BMI270 accel self-test [OK]\n");
   } else {
-    DEBUG_PRINT("BMI270 accel self-test [FAILED]\n");
-    testStatus = false;
+    DEBUG_PRINT("BMI270 accel self-test [OK]\n");
   }
+  // Do not perform accel_self_test, otherwise the BMI270 won't fire the interrupt
+  // int8_t accelResult = 0;
+  // accelResult = bmi2_perform_accel_self_test(&bmi270Dev);
+  // if (accelResult == BMI2_OK) {
+  //   DEBUG_PRINT("BMI270 accel self-test [OK]\n");
+  // } else {
+  //   DEBUG_PRINT("BMI270 accel self-test [FAILED]\n");
+  //   testStatus = false;
+  // }
 
   return testStatus;
 }
@@ -1265,11 +1265,7 @@ static void applyAxis3fLpf(lpf2pData *data, Axis3f* in) {
 void sensorsBmi270SpiBmp388DataAvailableCallback(void) {
   portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
   imuIntTimestamp = usecTimestamp();
-  static int cnt = 0;
-  if (cnt++ == 800) {
-    DEBUG_PRINT("aval 800\n");
-    cnt = 0;
-  }
+
   xSemaphoreGiveFromISR(sensorsDataReady, &xHigherPriorityTaskWoken);
   
   if (xHigherPriorityTaskWoken) {

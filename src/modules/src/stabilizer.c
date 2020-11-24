@@ -230,7 +230,7 @@ static void checkEmergencyStopTimeout() {
 static void stabilizerTask(void* param) {
 
   uint32_t tick;
-  // uint32_t lastWakeTime;
+  uint32_t lastWakeTime;
   vTaskSetApplicationTaskTag(0, (void*)TASK_STABILIZER_ID_NBR);
 
   // Wait for the system to be fully started to start stabilization loop
@@ -239,10 +239,10 @@ static void stabilizerTask(void* param) {
   DEBUG_PRINT("Wait for sensor calibration...\n");
 
   // Wait for sensors to be calibrated
-  // lastWakeTime = xTaskGetTickCount();
+  lastWakeTime = xTaskGetTickCount();
 
   while (!sensorsAreCalibrated()) {
-    // vTaskDelayUntil(&lastWakeTime, F2T(RATE_MAIN_LOOP));
+    vTaskDelayUntil(&lastWakeTime, F2T(RATE_MAIN_LOOP));
     DEBUG_PRINT("stablizer once\n");
     vTaskDelay(M2T(1000));
   }
