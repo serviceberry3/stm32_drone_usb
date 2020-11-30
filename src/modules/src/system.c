@@ -111,9 +111,9 @@ void systemInit(void) {
   // for SEGGER debugger
   // debugInit();
   // radio link
-  // crtpInit();
+  crtpInit();
   // used to print to client
-  // consoleInit();
+  consoleInit();
 
   DEBUG_PRINT("----------------------------\n");
   DEBUG_PRINT("%s is up and running!\n", platformConfigGetDeviceTypeName());
@@ -181,12 +181,6 @@ void systemTask(void *arg) {
   deckInit(); // remain to be tested
   estimator = deckGetRequiredEstimator();
   stabilizerInit(estimator);
-
-  // DEBUG_PRINT("SYSTEM START\n");
-  // systemStart();
-  // workerLoop();
-  // while (1)
-  //   vTaskDelay(portMAX_DELAY);
 
   
   if (deckGetRequiredLowInterferenceRadioMode() && platformConfigPhysicalLayoutAntennasAreClose()) {

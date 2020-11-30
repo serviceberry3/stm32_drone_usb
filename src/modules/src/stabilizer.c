@@ -159,10 +159,11 @@ static void compressState() {
     state.attitudeQuaternion.x,
     state.attitudeQuaternion.y,
     state.attitudeQuaternion.z,
-    state.attitudeQuaternion.w};
+    state.attitudeQuaternion.w
+  };
   stateCompressed.quat = quatcompress(q);
 
-  float const deg2millirad = ((float)M_PI * 1000.0f) / 180.0f;
+  float const deg2millirad = ((float) M_PI * 1000.0f) / 180.0f;
   stateCompressed.rateRoll = sensorData.gyro.x * deg2millirad;
   stateCompressed.ratePitch = -sensorData.gyro.y * deg2millirad;
   stateCompressed.rateYaw = sensorData.gyro.z * deg2millirad;
@@ -283,9 +284,12 @@ static void stabilizerTask(void* param) {
       }
 
       stateEstimator(&state, &sensorData, &control, tick);
+
+      // compress for debug
       compressState();
 
       commanderGetSetpoint(&setpoint, &state);
+      // compress for debug
       compressSetpoint();
 
       sitAwUpdateSetpoint(&setpoint, &sensorData, &state);
@@ -322,30 +326,25 @@ static void stabilizerTask(void* param) {
   }
 }
 
-void stabilizerSetEmergencyStop()
-{
+void stabilizerSetEmergencyStop() {
   emergencyStop = true;
 }
 
-void stabilizerResetEmergencyStop()
-{
+void stabilizerResetEmergencyStop() {
   emergencyStop = false;
 }
 
-void stabilizerSetEmergencyStopTimeout(int timeout)
-{
+void stabilizerSetEmergencyStopTimeout(int timeout) {
   emergencyStop = false;
   emergencyStopTimeout = timeout;
 }
 
-static float variance(float *buffer, uint32_t length)
-{
+static float variance(float *buffer, uint32_t length) {
   uint32_t i;
   float sum = 0;
   float sumSq = 0;
 
-  for (i = 0; i < length; i++)
-  {
+  for (i = 0; i < length; i++) {
     sum += buffer[i];
     sumSq += buffer[i] * buffer[i];
   }
@@ -360,10 +359,8 @@ static float variance(float *buffer, uint32_t length)
  * @param string A pointer to a string describing the value.
  * @return True if self test within low - high limit, false otherwise
  */
-static bool evaluateTest(float low, float high, float value, uint8_t motor)
-{
-  if (value < low || value > high)
-  {
+static bool evaluateTest(float low, float high, float value, uint8_t motor) {
+  if (value < low || value > high) {
     DEBUG_PRINT("Propeller test on M%d [FAIL]. low: %0.2f, high: %0.2f, measured: %0.2f\n",
                 motor + 1, (double)low, (double)high, (double)value);
     return false;

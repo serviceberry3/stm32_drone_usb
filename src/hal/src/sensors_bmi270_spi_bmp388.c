@@ -528,9 +528,11 @@ static uint8_t sensorsGyroGet(Axis3i16* dataOut) {
   struct bmi2_sensor_data sensor_data = { 0 };
   sensor_data.type = BMI2_GYRO;
   rslt = bmi2_get_sensor_data(&sensor_data, 1, &bmi270Dev);
+  // bmi270 is installed upside-down
+  // z-angular velocity should be negative
   dataOut->x = sensor_data.sens_data.gyr.x;
   dataOut->y = sensor_data.sens_data.gyr.y;
-  dataOut->z = sensor_data.sens_data.gyr.z;
+  dataOut->z = -sensor_data.sens_data.gyr.z;
   return rslt;
 }
 
@@ -539,9 +541,11 @@ static uint8_t sensorsAccelGet(Axis3i16* dataOut) {
   struct bmi2_sensor_data sensor_data = { 0 };
   sensor_data.type = BMI2_ACCEL;
   rslt = bmi2_get_sensor_data(&sensor_data, 1, &bmi270Dev);
-  dataOut->x = sensor_data.sens_data.acc.x;
+  // bmi270 is installed upside-down
+  // x,z-acc direction should be negative
+  dataOut->x = -sensor_data.sens_data.acc.x;
   dataOut->y = sensor_data.sens_data.acc.y; 
-  dataOut->z = sensor_data.sens_data.acc.z;
+  dataOut->z = -sensor_data.sens_data.acc.z;
   return rslt;
 }
 
@@ -1271,11 +1275,11 @@ void sensorsBmi270SpiBmp388DataAvailableCallback(void) {
 
   xSemaphoreGiveFromISR(sensorsDataReady, &xHigherPriorityTaskWoken);
 
-  static int cnt = 0;
-  if (cnt++ == 800) {
-    DEBUG_PRINT("aval 800\n");
-    cnt = 0;
-  }
+  // static int cnt = 0;
+  // if (cnt++ == 800) {
+  //   DEBUG_PRINT("aval 800\n");
+  //   cnt = 0;
+  // }
   
   if (xHigherPriorityTaskWoken) {
     portYIELD();

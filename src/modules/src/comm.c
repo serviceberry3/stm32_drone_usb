@@ -53,8 +53,8 @@ void commInit(void) {
   /* These functions are moved to be initialized early so
    * that DEBUG_PRINT can be used early */
   // Guojun: disable for debug
-  // crtpInit();
-  // consoleInit();
+  crtpInit();
+  consoleInit();
 
   crtpSetLink(radiolinkGetLink());
 
@@ -79,8 +79,8 @@ bool commTest(void) {
   
   pass &= radiolinkTest();
   // Guojun: disable for debug
-  // pass &= crtpTest();
-  // pass &= consoleTest();
+  pass &= crtpTest();
+  pass &= consoleTest();
   pass &= crtpserviceTest();
   pass &= platformserviceTest();
   

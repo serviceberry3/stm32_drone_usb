@@ -29,6 +29,7 @@
 #include <stdbool.h>
 #include "eprintf.h"
 
+// #define UART1_BAUDRATE           9600
 #define UART1_BAUDRATE           9600
 #define UART1_DATA_TIMEOUT_MS    1000
 #define UART1_DATA_TIMEOUT_TICKS (UART1_DATA_TIMEOUT_MS / portTICK_RATE_MS)

@@ -61,12 +61,9 @@ void powerDistributionInit(void) {
   motorsInit(platformConfigGetMotorMapping());
 }
 
-bool powerDistributionTest(void)
-{
+bool powerDistributionTest(void) {
   bool pass = true;
-
   pass &= motorsTest();
-
   return pass;
 }
 
@@ -117,15 +114,10 @@ void powerDistribution(const control_t *control) {
       motorPower.m4 = idleThrust;
     }
 
-    // motorsSetRatio(MOTOR_M1, motorPower.m1);
-    // motorsSetRatio(MOTOR_M2, motorPower.m2);
-    // motorsSetRatio(MOTOR_M3, motorPower.m3);
-    // motorsSetRatio(MOTOR_M4, motorPower.m4);
-    // Guojun: diable for debug
-    motorsSetRatio(MOTOR_M1, 1000);
-    motorsSetRatio(MOTOR_M2, 1000);
-    motorsSetRatio(MOTOR_M3, 1000);
-    motorsSetRatio(MOTOR_M4, 1000);
+    motorsSetRatio(MOTOR_M1, motorPower.m1);
+    motorsSetRatio(MOTOR_M2, motorPower.m2);
+    motorsSetRatio(MOTOR_M3, motorPower.m3);
+    motorsSetRatio(MOTOR_M4, motorPower.m4);
   }
 }
 

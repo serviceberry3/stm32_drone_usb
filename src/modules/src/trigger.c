@@ -40,8 +40,7 @@
  * @param threshold    The threshold to use with the trigger function.
  * @param triggerCount When testCounter reaches this value, a trigger is reported.
  */
-void triggerInit(trigger_t *trigger, triggerFunc_t func, float threshold, uint32_t triggerCount)
-{
+void triggerInit(trigger_t *trigger, triggerFunc_t func, float threshold, uint32_t triggerCount) {
   assert_param(trigger != NULL);
   assert_param(func != triggerFuncNone);
 
@@ -60,8 +59,7 @@ void triggerInit(trigger_t *trigger, triggerFunc_t func, float threshold, uint32
  * @param handler      If a handler is registered, this handler function is called when the trigger is released. Otherwise NULL.
  * @param handlerArg   Argument to pass to the handler function. NULL if not used.
  */
-void triggerRegisterHandler(trigger_t *trigger, triggerHandler_t handler, void *handlerArg)
-{
+void triggerRegisterHandler(trigger_t *trigger, triggerHandler_t handler, void *handlerArg) {
   assert_param(trigger != NULL);
   assert_param(handler != NULL);
 
@@ -75,8 +73,7 @@ void triggerRegisterHandler(trigger_t *trigger, triggerHandler_t handler, void *
  *
  * @param trigger The trigger object.
  */
-void triggerDeInit(trigger_t *trigger)
-{
+void triggerDeInit(trigger_t *trigger) {
   assert_param(trigger != NULL);
 
   triggerInit(trigger, triggerFuncNone, 0, 0);
@@ -96,8 +93,7 @@ void triggerDeInit(trigger_t *trigger)
  * @param trigger The trigger object.
  * @param active  Set the trigger active (true) or deactive (false).
  */
-void triggerActivate(trigger_t *trigger, bool active)
-{
+void triggerActivate(trigger_t *trigger, bool active) {
   assert_param(trigger != NULL);
 
   triggerReset(trigger);
@@ -114,8 +110,7 @@ void triggerActivate(trigger_t *trigger, bool active)
  *
  * @param trigger The trigger object.
  */
-void triggerReset(trigger_t *trigger)
-{
+void triggerReset(trigger_t *trigger) {
   assert_param(trigger != NULL);
 
   trigger->testCounter = 0;
@@ -128,11 +123,10 @@ void triggerReset(trigger_t *trigger)
  *
   * @param trigger The trigger object.
  */
-static void triggerIncTestCounter(trigger_t *trigger)
-{
+static void triggerIncTestCounter(trigger_t *trigger) {
   assert_param(trigger != NULL);
 
-   if(trigger->testCounter < trigger->triggerCount) {
+   if (trigger->testCounter < trigger->triggerCount) {
      trigger->testCounter++;
    }
 }
@@ -155,33 +149,30 @@ static void triggerIncTestCounter(trigger_t *trigger)
  *
  * @return True when the trigger has been released.
  */
-bool triggerTestValue(trigger_t *trigger, float testValue)
-{
+bool triggerTestValue(trigger_t *trigger, float testValue) {
   assert_param(trigger != NULL);
 
   /* Do not do anything if the trigger has been deactivated. */
-  if(!trigger->active) {
+  if (!trigger->active) {
     return false;
   }
 
-  switch(trigger->func) {
+  switch (trigger->func) {
     case triggerFuncIsLE: {
-      if(testValue <= trigger->threshold) {
+      if (testValue <= trigger->threshold) {
         triggerIncTestCounter(trigger);
         break;
-      }
-      else {
+      } else {
         /* Reset the trigger if the test failed. */
         triggerReset(trigger);
         return false;
       }
     }
     case triggerFuncIsGE: {
-      if(testValue >= trigger->threshold) {
+      if (testValue >= trigger->threshold) {
         triggerIncTestCounter(trigger);
         break;
-      }
-      else {
+      } else {
         /* Reset the trigger if the test failed. */
         triggerReset(trigger);
         return false;
@@ -197,13 +188,13 @@ bool triggerTestValue(trigger_t *trigger, float testValue)
   trigger->released = (trigger->testCounter >= trigger->triggerCount);
 
   /* If the trigger has not been release, exit immediately. */
-  if(!trigger->released) {
+  if (!trigger->released) {
     return false;
   }
 
   /* The trigger object may be reset by the handler, thus make an internal copy of the released flag. */
   bool iReleased = trigger->released;
-  if(trigger->released && (trigger->handler != NULL) && (!trigger->handlerCalled)) {
+  if (trigger->released && (trigger->handler != NULL) && (!trigger->handlerCalled)) {
     /* Set the handlerCalled = true before calling, since the handler may choose to reset the object. */
     trigger->handlerCalled = true;
     trigger->handler(trigger->handlerArg);

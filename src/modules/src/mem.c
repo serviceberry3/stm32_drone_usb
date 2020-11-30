@@ -133,8 +133,7 @@ void memoryRegisterHandler(const MemoryHandlerDef_t* handlerDef){
   for (int i = 0; i < nrOfHandlers; i++) {
     ASSERT(handlerDef->type != handlers[i]->type);
   }
-  // Guojun: debug for mem module
-  DEBUG_PRINT("mem register: %d\n", handlerDef->type);
+
   ASSERT(nrOfHandlers < MAX_NR_HANDLERS);
   ASSERT(registrationEnabled);
   handlers[nrOfHandlers] = handlerDef;

@@ -36,6 +36,7 @@ void sitAwInit(void);
 void sitAwUpdateSetpoint(setpoint_t *setpoint, const sensorData_t *sensorData,
                                                const state_t *state);
 /* Enable the situation awareness framework. */
+// Guojun: disable sitAw for debug
 #define SITAW_ENABLED
 /* Enable the different functions of the situation awareness framework. */
 //#define SITAW_FF_ENABLED           /* Uncomment to enable */

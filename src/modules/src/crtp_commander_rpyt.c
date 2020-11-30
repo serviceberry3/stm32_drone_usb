@@ -34,14 +34,17 @@
 #include "FreeRTOS.h"
 #include "num.h"
 
-#define MIN_THRUST  1000
+#include "debug.h"
+
+// Guojun: set for debug
+#define MIN_THRUST  100
+// #define MIN_THRUST  1000
 #define MAX_THRUST  60000
 
 /**
  * CRTP commander rpyt packet format
  */
-struct CommanderCrtpLegacyValues
-{
+struct CommanderCrtpLegacyValues {
   float roll;       // deg
   float pitch;      // deg
   float yaw;        // deg
@@ -51,8 +54,7 @@ struct CommanderCrtpLegacyValues
 /**
  * Stabilization modes for Roll, Pitch, Yaw.
  */
-typedef enum
-{
+typedef enum {
   RATE    = 0,
   ANGLE   = 1,
 } RPYType;
@@ -60,8 +62,7 @@ typedef enum
 /**
  * Yaw flight Modes
  */
-typedef enum
-{
+typedef enum {
   CAREFREE  = 0, // Yaw is locked to world coordinates thus heading stays the same when yaw rotates
   PLUSMODE  = 1, // Plus-mode. Motor M1 is defined as front
   XMODE     = 2, // X-mode. M1 & M4 are defined as front
@@ -84,8 +85,7 @@ static bool posSetMode = false;
  *
  * @param yawRad Amount of radians to rotate yaw.
  */
-static void rotateYaw(setpoint_t *setpoint, float yawRad)
-{
+static void rotateYaw(setpoint_t *setpoint, float yawRad) {
   float cosy = cosf(yawRad);
   float siny = sinf(yawRad);
   float originalRoll = setpoint->attitude.roll;
@@ -98,10 +98,8 @@ static void rotateYaw(setpoint_t *setpoint, float yawRad)
 /**
  * Update Yaw according to current setting
  */
-static void yawModeUpdate(setpoint_t *setpoint)
-{
-  switch (yawMode)
-  {
+static void yawModeUpdate(setpoint_t *setpoint) {
+  switch (yawMode) {
     case CAREFREE:
       // TODO: Add frame of reference to setpoint
       ASSERT(false);
@@ -118,15 +116,16 @@ static void yawModeUpdate(setpoint_t *setpoint)
 
 void crtpCommanderRpytDecodeSetpoint(setpoint_t *setpoint, CRTPPacket *pk) {
   struct CommanderCrtpLegacyValues *values = (struct CommanderCrtpLegacyValues*) pk->data;
-
+  
   if (commanderGetActivePriority() == COMMANDER_PRIORITY_DISABLE) {
     thrustLocked = true;
   }
-  if (values->thrust == 0) {
+
+  // Guojun: for debug
+  if (values->thrust == 0 || 1) {
     thrustLocked = false;
   }
-  // Guojun: set for debug
-  thrustLocked = false;
+
   // Thrust
   uint16_t rawThrust = values->thrust;
 
@@ -136,6 +135,7 @@ void crtpCommanderRpytDecodeSetpoint(setpoint_t *setpoint, CRTPPacket *pk) {
     setpoint->thrust = fminf(rawThrust, MAX_THRUST);
   }
 
+  
   if (altHoldMode) {
     setpoint->thrust = 0;
     setpoint->mode.z = modeVelocity;
@@ -144,7 +144,6 @@ void crtpCommanderRpytDecodeSetpoint(setpoint_t *setpoint, CRTPPacket *pk) {
   } else {
     setpoint->mode.z = modeDisable;
   }
-
   // roll/pitch
   if (posHoldMode) {
     setpoint->mode.x = modeVelocity;
@@ -214,6 +213,7 @@ void crtpCommanderRpytDecodeSetpoint(setpoint_t *setpoint, CRTPPacket *pk) {
       setpoint->attitude.yaw = values->yaw;
     }
   }
+
 }
 
 // Params for flight modes

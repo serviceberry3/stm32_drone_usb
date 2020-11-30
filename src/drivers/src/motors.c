@@ -139,7 +139,7 @@ void motorsInit(const MotorPerifDef** motorMapSelect) {
     // PWM channels configuration (All identical!)
     TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
     TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-    TIM_OCInitStructure.TIM_Pulse = 30;
+    TIM_OCInitStructure.TIM_Pulse = 0;
     TIM_OCInitStructure.TIM_OCPolarity = motorMap[i]->timPolarity;
     TIM_OCInitStructure.TIM_OCIdleState = TIM_OCIdleState_Set;
 
@@ -208,8 +208,6 @@ bool motorsTest(void) {
 
 // Ithrust is thrust mapped for 65536 <==> 60 grams
 void motorsSetRatio(uint32_t id, uint16_t ithrust) {
-  // Guojun: disable for test
-  return;
   if (isInit) {
     uint16_t ratio;
 
@@ -229,6 +227,13 @@ void motorsSetRatio(uint32_t id, uint16_t ithrust) {
 
     }
   #endif
+
+  // static int cnt = 0;
+  // if (cnt++ == 400) {
+  //   DEBUG_PRINT("m100: %d\n", motorsConv16ToBits(ratio));
+  //   cnt = 0;
+  // }
+  
     if (motorMap[id]->drvType == BRUSHLESS) {
       motorMap[id]->setCompare(motorMap[id]->tim, motorsBLConv16ToBits(ratio));
     } else {
@@ -251,8 +256,6 @@ int motorsGetRatio(uint32_t id) {
 }
 
 void motorsBeep(int id, bool enable, uint16_t frequency, uint16_t ratio) {
-  // Guojun: disable for test
-  return;
   TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
 
   ASSERT(id < NBR_OF_MOTORS);

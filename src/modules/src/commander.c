@@ -37,6 +37,7 @@
 #include "param.h"
 #include "static_mem.h"
 
+
 static bool isInit;
 const static setpoint_t nullSetpoint;
 static setpoint_t tempSetpoint;
@@ -99,6 +100,7 @@ void commanderNotifySetpointsStop(int remainValidMillisecs) {
 
 void commanderGetSetpoint(setpoint_t *setpoint, const state_t *state) {
   xQueuePeek(setpointQueue, setpoint, 0);
+
   lastUpdate = setpoint->timestamp;
   uint32_t currentTime = xTaskGetTickCount();
 

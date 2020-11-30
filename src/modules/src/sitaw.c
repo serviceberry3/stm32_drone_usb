@@ -36,6 +36,8 @@
 #include "stabilizer.h"
 #include "motors.h"
 
+#include "debug.h"
+
 /* Trigger object used to detect Free Fall situation. */
 static trigger_t sitAwFFAccWZ;
 
@@ -103,15 +105,15 @@ static void sitAwTuTest(float accz);
 #endif
 
 static void sitAwPostStateUpdateCallOut(const sensorData_t *sensorData,
-                                        const state_t *state)
-{
+                                        const state_t *state) {
   /* Code that shall run AFTER each attitude update, should be placed here. */
-
+  // Guojun: disable sitAw without compile error
+  return;
 #if defined(SITAW_ENABLED)
 #ifdef SITAW_FF_ENABLED
-  float accMAG = (sensorData->acc.x*sensorData->acc.x) +
-                 (sensorData->acc.y*sensorData->acc.y) +
-                 (sensorData->acc.z*sensorData->acc.z);
+  float accMAG = (sensorData->acc.x * sensorData->acc.x) +
+                 (sensorData->acc.y * sensorData->acc.y) +
+                 (sensorData->acc.z * sensorData->acc.z);
 
   /* Test values for Free Fall detection. */
   sitAwFFTest(state->acc.z, accMAG);
@@ -122,6 +124,7 @@ static void sitAwPostStateUpdateCallOut(const sensorData_t *sensorData,
   for (int i = 0; i < NBR_OF_MOTORS; ++i) {
     sumRatio += motorsGetRatio(i);
   }
+
   bool isFlying = sumRatio > SITAW_TU_IN_FLIGHT_THRESHOLD;
   if (isFlying) {
     /* Test values for Tumbled detection. */
@@ -135,13 +138,14 @@ static void sitAwPostStateUpdateCallOut(const sensorData_t *sensorData,
 #endif
 }
 
-static void sitAwPreThrustUpdateCallOut(setpoint_t *setpoint)
-{
+static void sitAwPreThrustUpdateCallOut(setpoint_t *setpoint) {
   /* Code that shall run BEFORE each thrust distribution update, should be placed here. */
-
+  // Guojun: disable sitAw without compile error
+  return;
 #if defined(SITAW_ENABLED)
 #ifdef SITAW_TU_ENABLED
-      if(sitAwTuDetected()) {
+      if (sitAwTuDetected()) {
+        // DEBUG_PRINT("here\n");
         /* Kill the thrust to the motors if a Tumbled situation is detected. */
         stabilizerSetEmergencyStop();
       }
@@ -152,7 +156,7 @@ static void sitAwPreThrustUpdateCallOut(setpoint_t *setpoint)
          FIXME: Needs a flying/landing state (as soon as althold is enabled,
                                               we are not freefalling anymore)
        */
-      if(sitAwFFDetected() && !sitAwTuDetected()) {
+      if (sitAwFFDetected() && !sitAwTuDetected()) {
         setpoint->mode.z = modeVelocity;
         setpoint->velocity.z = 0;
       }
@@ -167,8 +171,7 @@ static void sitAwPreThrustUpdateCallOut(setpoint_t *setpoint)
  * should update the setpoint accordig to the current state situation
  */
 void sitAwUpdateSetpoint(setpoint_t *setpoint, const sensorData_t *sensorData,
-                                               const state_t *state)
-{
+                                               const state_t *state) {
   sitAwPostStateUpdateCallOut(sensorData, state);
   sitAwPreThrustUpdateCallOut(setpoint);
 }
@@ -179,8 +182,7 @@ void sitAwUpdateSetpoint(setpoint_t *setpoint, const sensorData_t *sensorData,
  *
  * See the sitAwFFTest() function for details.
  */
-void sitAwFFInit(void)
-{
+void sitAwFFInit(void) {
   triggerInit(&sitAwFFAccWZ, triggerFuncIsLE, SITAW_FF_THRESHOLD, SITAW_FF_TRIGGER_COUNT);
   triggerActivate(&sitAwFFAccWZ, true);
 }
@@ -204,10 +206,9 @@ void sitAwFFInit(void)
  * @param accWZ  Vertical acceleration (regardless of orientation)
  * @param accMAG All experienced accelerations.
  */
-void sitAwFFTest(float accWZ, float accMAG)
-{
+void sitAwFFTest(float accWZ, float accMAG) {
   /* Check that the total acceleration is close to zero. */
-  if(fabs(accMAG) > SITAW_FF_THRESHOLD) {
+  if (fabs(accMAG) > SITAW_FF_THRESHOLD) {
     /* If the total acceleration deviates from 0, this is not a free fall situation. */
     triggerReset(&sitAwFFAccWZ);
   } else {
@@ -225,8 +226,7 @@ void sitAwFFTest(float accWZ, float accMAG)
  *
  * @return True if the situation has been detected, otherwise false.
  */
-bool sitAwFFDetected(void)
-{
+bool sitAwFFDetected(void) {
   return sitAwFFAccWZ.released;
 }
 #endif
@@ -237,8 +237,7 @@ bool sitAwFFDetected(void)
  *
  * See the sitAwARTest() function for details.
  */
-void sitAwARInit(void)
-{
+void sitAwARInit(void) {
   triggerInit(&sitAwARAccZ, triggerFuncIsLE, SITAW_AR_THRESHOLD, SITAW_AR_TRIGGER_COUNT);
   triggerActivate(&sitAwARAccZ, true);
 }
@@ -260,10 +259,9 @@ void sitAwARInit(void)
  * @param accY   Horizontal Y acceleration (when crazyflie is placed on its feet)
  * @param accZ   Vertical Z acceleration (when crazyflie is placed on its feet)
  */
-void sitAwARTest(float accX, float accY, float accZ)
-{
+void sitAwARTest(float accX, float accY, float accZ) {
   /* Check that there are no horizontal accelerations. At rest, these are 0. */
-  if((fabs(accX) > SITAW_AR_THRESHOLD) || (fabs(accY) > SITAW_AR_THRESHOLD)) {
+  if ((fabs(accX) > SITAW_AR_THRESHOLD) || (fabs(accY) > SITAW_AR_THRESHOLD)) {
     /* If the X or Y accelerations are different than 0, the crazyflie is not at rest. */
     triggerReset(&sitAwARAccZ);
   }
@@ -283,8 +281,7 @@ void sitAwARTest(float accX, float accY, float accZ)
  *
  * @return True if the situation has been detected, otherwise false.
  */
-bool sitAwARDetected(void)
-{
+bool sitAwARDetected(void) {
   return sitAwARAccZ.released;
 }
 #endif
@@ -295,8 +292,7 @@ bool sitAwARDetected(void)
  *
  * See the sitAwTuTest() function for details.
  */
-void sitAwTuInit(void)
-{
+void sitAwTuInit(void) {
   triggerInit(&sitAwTuAcc, triggerFuncIsLE, SITAW_TU_ACC_THRESHOLD, SITAW_TU_ACC_TRIGGER_COUNT);
   triggerActivate(&sitAwTuAcc, true);
 }
@@ -314,8 +310,7 @@ void sitAwTuInit(void)
 
  * @param The current accelerometer reading in z direction
  */
-void sitAwTuTest(float accz)
-{
+void sitAwTuTest(float accz) {
   triggerTestValue(&sitAwTuAcc, accz);
 }
 
@@ -324,8 +319,7 @@ void sitAwTuTest(float accz)
  *
  * @return True if the situation has been detected, otherwise false.
  */
-bool sitAwTuDetected(void)
-{
+bool sitAwTuDetected(void) {
   return sitAwTuAcc.released;
 }
 #endif
@@ -333,8 +327,7 @@ bool sitAwTuDetected(void)
 /**
  * Initialize the situation awareness subsystem.
  */
-void sitAwInit(void)
-{
+void sitAwInit(void) {
 #ifdef SITAW_FF_ENABLED
   sitAwFFInit();
 #endif

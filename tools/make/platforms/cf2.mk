@@ -1,6 +1,6 @@
 # Make configuration for the Crazyflie 2 platform
 
-PLATFORM_HELP_cf2 = Crazyflie2 platform, includes Crazyflie 2.0, Crazyflie 2.1 and Bolt
+PLATFORM_HELP_cf2 = Crazyflie2 platform, includes Crazyflie 2.0, Crazyflie 2.1, Bolt and F407
 PLATFORM_NAME_cf2 = CF2 platform
 
 CPU=stm32f4
@@ -8,7 +8,9 @@ CPU=stm32f4
 # CFLAGS += -DDEVICE_TYPE_STRING_FORCE="CF21"
 CFLAGS += -DDEVICE_TYPE_STRING_FORCE="F407"
 # debug print to uart2
+CFLAGS += -DUART2_PD
 CFLAGS += -DENABLE_UART2
+# CFLAGS += -DENABLE_UART1
 CFLAGS += -DDEBUG_PRINT_ON_UART2
 
 ######### Sensors configuration ##########

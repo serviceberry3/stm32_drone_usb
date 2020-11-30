@@ -242,8 +242,7 @@ static int start_trajectory(const struct data_start_trajectory* data);
 static int define_trajectory(const struct data_define_trajectory* data);
 
 // Helper functions
-static struct vec state2vec(struct vec3_s v)
-{
+static struct vec state2vec(struct vec3_s v) {
   return mkvec(v.x, v.y, v.z);
 }
 
@@ -251,8 +250,7 @@ bool isInGroup(uint8_t g) {
   return g == ALL_GROUPS || (g & group_mask) != 0;
 }
 
-void crtpCommanderHighLevelInit(void)
-{
+void crtpCommanderHighLevelInit(void) {
   if (isInit) {
     return;
   }
@@ -272,13 +270,11 @@ void crtpCommanderHighLevelInit(void)
   isInit = true;
 }
 
-bool crtpCommanderHighLevelIsStopped()
-{
+bool crtpCommanderHighLevelIsStopped() {
   return plan_is_stopped(&planner);
 }
 
-void crtpCommanderHighLevelTellState(const state_t *state)
-{
+void crtpCommanderHighLevelTellState(const state_t *state) {
   xSemaphoreTake(lockTraj, portMAX_DELAY);
   pos = state2vec(state->position);
   vel = state2vec(state->velocity);
@@ -286,8 +282,7 @@ void crtpCommanderHighLevelTellState(const state_t *state)
   xSemaphoreGive(lockTraj);
 }
 
-void crtpCommanderHighLevelGetSetpoint(setpoint_t* setpoint, const state_t *state)
-{
+void crtpCommanderHighLevelGetSetpoint(setpoint_t* setpoint, const state_t *state) {
   xSemaphoreTake(lockTraj, portMAX_DELAY);
   float t = usecTimestamp() / 1e6;
   struct traj_eval ev = plan_current_goal(&planner, t);

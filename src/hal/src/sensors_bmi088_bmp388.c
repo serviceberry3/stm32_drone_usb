@@ -278,18 +278,13 @@ static void sensorsTask(void *param)
    * this is only required by the z-ranger, since the
    * configuration will be done after system start-up */
   //vTaskDelayUntil(&lastWakeTime, M2T(1500));
-  while (1)
-  {
-    if (pdTRUE == xSemaphoreTake(sensorsDataReady, portMAX_DELAY))
-    {
+  while (1) {
+    if (pdTRUE == xSemaphoreTake(sensorsDataReady, portMAX_DELAY)) {
       sensorData.interruptTimestamp = imuIntTimestamp;
      
       /* get data from chosen sensors */
-      long int t1 = xTaskGetTickCount();
       sensorsGyroGet(&gyroRaw);
       sensorsAccelGet(&accelRaw);
-      long int t2 = xTaskGetTickCount();
-      DEBUG_PRINT("tick: %ld\n", t2 - t1);
 
       /* calibrate if necessary */
 #ifdef GYRO_BIAS_LIGHT_WEIGHT
