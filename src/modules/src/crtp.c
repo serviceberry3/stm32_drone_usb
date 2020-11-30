@@ -170,7 +170,7 @@ void crtpRxTask(void *param) {
     p.port = CRTP_PORT_SETPOINT;
     p.channel = 0;
     struct CommanderCrtpLegacyValues *values = (struct CommanderCrtpLegacyValues*) p.data;
-    values->thrust = 1000;
+    values->thrust = 8000;
     callbacks[p.port](&p);
     vTaskDelay(M2T(200));
 

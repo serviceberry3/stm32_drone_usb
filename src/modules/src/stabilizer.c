@@ -256,7 +256,7 @@ static void stabilizerTask(void* param) {
 
   DEBUG_PRINT("Ready to fly.\n");
 
-  // static int cnt = 0;
+  static int cnt = 0;
 
   while (1) {
     // The sensor should unlock at 800Hz
@@ -284,6 +284,12 @@ static void stabilizerTask(void* param) {
       }
 
       stateEstimator(&state, &sensorData, &control, tick);
+
+      if (cnt++ == 200) {
+        DEBUG_PRINT("a.x: %f, a.y: %f, a.z: %f\n,", (double) sensorData.acc.x, (double) sensorData.acc.y, (double) sensorData.acc.z);
+        cnt = 0;
+      }
+      
 
       // compress for debug
       compressState();
