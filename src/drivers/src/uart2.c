@@ -23,6 +23,7 @@
  *
  * uart2.c - uart2 driver
  */
+#define DEBUG_MODULE "UART2"
 #include <string.h>
 
 /*ST includes */
@@ -40,6 +41,7 @@
 #include "config.h"
 #include "nvicconf.h"
 #include "static_mem.h"
+#include "debug.h"
 
 #ifdef UART2_LINK_COMM
 #include "queuemonitor.h"
@@ -207,7 +209,10 @@ void uart2SendData(uint32_t size, uint8_t* data) {
   }
 }
 
+//looks like this is being used to send ack pkts back to radio chip
 void uart2SendDataDmaBlocking(uint32_t size, uint8_t* data) {
+	DEBUG_PRINT("uart2SendDataDmaBlocking()\n");
+
   if (isUartDmaInitialized) {
     xSemaphoreTake(uartBusy, portMAX_DELAY);
     // Wait for DMA to be free
@@ -216,6 +221,7 @@ void uart2SendDataDmaBlocking(uint32_t size, uint8_t* data) {
     memcpy(dmaBuffer, data, size);
     DMA_InitStructureShare.DMA_BufferSize = size;
     initialDMACount = size;
+
     // Init new DMA stream
     DMA_Init(UART2_DMA_STREAM, &DMA_InitStructureShare);
     // Enable the Transfer Complete interrupt
@@ -226,6 +232,7 @@ void uart2SendDataDmaBlocking(uint32_t size, uint8_t* data) {
     USART_ClearFlag(UART2_TYPE, USART_FLAG_TC);
     /* Enable DMA USART TX Stream */
     DMA_Cmd(UART2_DMA_STREAM, ENABLE);
+
     xSemaphoreTake(waitUntilSendDone, portMAX_DELAY);
     xSemaphoreGive(uartBusy);
   }
@@ -264,7 +271,9 @@ void uart2HandleDataFromISR(uint8_t c, BaseType_t * const pxHigherPriorityTaskWo
       cksum[1] += cksum[0];
       dataIndex = 0;
       rxState = (c > 0) ? waitForData : waitForChksum1;
-    } else {
+    }
+
+    else {
       rxState = waitForFirstStart;
     }
     break;

@@ -23,6 +23,8 @@
  *
  * uart.c - uart CRTP link and raw access functions
  */
+#define DEBUG_MODULE "USB"
+
 #include <string.h>
 
 /*ST includes */
@@ -47,6 +49,7 @@
 
 #include "crtp.h"
 #include "static_mem.h"
+#include "debug.h"
 
 
 NO_DMA_CCM_SAFE_ZERO_INIT __ALIGN_BEGIN USB_OTG_CORE_HANDLE    USB_OTG_dev __ALIGN_END ;
@@ -114,6 +117,7 @@ static uint8_t  *usbd_cf_GetCfgDesc (uint8_t speed, uint16_t *length);
 static uint8_t  usbd_cf_SOF         (void *pdev);
 static uint8_t usbd_cf_Setup        (void *pdev , USB_SETUP_REQ  *req);
 
+//incoming and outgoing packet storage
 static USBPacket inPacket;
 static USBPacket outPacket;
 
@@ -221,12 +225,13 @@ static uint8_t  usbd_cf_DeInit (void  *pdev,
   * @param  epnum: endpoint number
   * @retval status
   */
-static uint8_t  usbd_cf_DataIn (void *pdev, uint8_t epnum)
+static uint8_t usbd_cf_DataIn (void *pdev, uint8_t epnum)
 {
   portBASE_TYPE xTaskWokenByReceive = pdFALSE;
 
   doingTransfer = false;
 
+  //receive from tx queue for sending
   if (xQueueReceiveFromISR(usbDataTx, &outPacket, &xTaskWokenByReceive) == pdTRUE)
   {
     doingTransfer = true;
@@ -241,7 +246,7 @@ static uint8_t  usbd_cf_DataIn (void *pdev, uint8_t epnum)
   return USBD_OK;
 }
 
-static uint8_t  usbd_cf_SOF (void *pdev)
+static uint8_t usbd_cf_SOF (void *pdev)
 {
   portBASE_TYPE xTaskWokenByReceive = pdFALSE;
 
@@ -275,6 +280,7 @@ static uint8_t  usbd_cf_DataOut (void *pdev, uint8_t epnum)
   /* Get the received data buffer and update the counter */
   inPacket.size = ((USB_OTG_CORE_HANDLE*)pdev)->dev.out_ep[epnum].xfer_count;
 
+  //put the incoming data on rx queue
   xQueueSendFromISR(usbDataRx, &inPacket, &xHigherPriorityTaskWoken);
 
   /* Prepare Out endpoint to receive next packet */
@@ -361,12 +367,13 @@ void USBD_USR_DeviceConnected(void) {
 /**
 * @brief  USBD_USR_DeviceDisonnected
 * @param  None
-* @retval Staus
+* @retval Status
 */
 void USBD_USR_DeviceDisconnected(void) {
   resetUSB();
 }
 
+//main usb initialization fxn
 void usbInit(void) {
   USBD_Init(&USB_OTG_dev,
             USB_OTG_FS_CORE_ID,
@@ -374,11 +381,15 @@ void usbInit(void) {
             &cf_usb_cb,
             &USR_cb);
 
+  //start up the USB receiving task and start monitoring the register there
   usbDataRx = STATIC_MEM_QUEUE_CREATE(usbDataRx);
   DEBUG_QUEUE_MONITOR_REGISTER(usbDataRx);
+
+  //start up the USB transmitting task and start monitoring the register there
   usbDataTx = STATIC_MEM_QUEUE_CREATE(usbDataTx);
   DEBUG_QUEUE_MONITOR_REGISTER(usbDataTx);
 
+  //set 'initialized' flag to true
   isInit = true;
 }
 
@@ -386,17 +397,25 @@ bool usbTest(void) {
   return isInit;
 }
 
+
+//get Rx USB data in
 bool usbGetDataBlocking(USBPacket *in) {
+
+	//get the data off the USB queue and BLOCK
   while (xQueueReceive(usbDataRx, in, portMAX_DELAY) != pdTRUE)
-    ; // Don't return until we get some data on the USB
+    ; // Don't return until we get some data on the USB (BLOCKING)
+
   return true;
 }
 
 static USBPacket outStage;
 
+
+
 bool usbSendData(uint32_t size, uint8_t* data) {
   outStage.size = size;
   memcpy(outStage.data, data, size);
-  // Dont' block when sending
+
+  //Don't block when sending (run in background)
   return (xQueueSend(usbDataTx, &outStage, M2T(100)) == pdTRUE);
 }

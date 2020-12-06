@@ -34,11 +34,17 @@
 
 bool watchdogNormalStartTest(void)
 {
-  bool wasNormalStart = true;
+	bool wasNormalStart = true;
+
+
 
 	if (RCC_GetFlagStatus(RCC_FLAG_IWDGRST)) {
 		RCC_ClearFlag();
-		wasNormalStart = false;
+
+		//Noah: force true for debug
+		//wasNormalStart = false;
+
+
 		DEBUG_PRINT("The system resumed after watchdog timeout [WARNING]\n");
 		printAssertSnapshotData();
 	}

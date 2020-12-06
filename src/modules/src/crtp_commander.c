@@ -44,6 +44,8 @@ void crtpCommanderInit(void) {
     return;
   }
   crtpInit();
+
+  //register callback functions
   crtpRegisterPortCB(CRTP_PORT_SETPOINT, commanderCrtpCB);
   crtpRegisterPortCB(CRTP_PORT_SETPOINT_GENERIC, commanderCrtpCB);
   isInit = true;
@@ -101,20 +103,35 @@ void notifySetpointsStopDecoder(const void *data, size_t datalen) {
   commanderNotifySetpointsStop(values->remainValidMillisecs);
 }
 
- /* ---===== packetDecoders array =====--- */
+
+/*
+ // ---===== packetDecoders array =====---
 const static metaCommandDecoder_t metaCommandDecoders[] = {
   [metaNotifySetpointsStop] = notifySetpointsStopDecoder,
-};
+};*/
 
-/* Decoder switch */
+
+
+/* Incoming packet decoder switch */
 static void commanderCrtpCB(CRTPPacket* pk) {
   static setpoint_t setpoint;
 
-  if (pk->port == CRTP_PORT_SETPOINT && pk->channel == 0) {
 
+  //CHANGED: FORCE SETPT DECODE AND PUSH
+  //if (pk->port == CRTP_PORT_SETPOINT && pk->channel == 0) {
+	//DEBUG_PRINT("PKT DECODER calling crtpCommanderRpytDecodeSetpt...\n");
+
+	//decode the setpoint
     crtpCommanderRpytDecodeSetpoint(&setpoint, pk);
+
+
+    //DEBUG_PRINT("crtp_commander PUSHING SETPT\n");
+    //push the setpoint to the commander for motor control adjustment
     commanderSetSetpoint(&setpoint, COMMANDER_PRIORITY_CRTP);
-  } else if (pk->port == CRTP_PORT_SETPOINT_GENERIC) {
+  //}
+
+    /*
+  else if (pk->port == CRTP_PORT_SETPOINT_GENERIC) {
     switch (pk->channel) {
       case SET_SETPOINT_CHANNEL:
         crtpCommanderGenericDecodeSetpoint(&setpoint, pk);
@@ -128,8 +145,8 @@ static void commanderCrtpCB(CRTPPacket* pk) {
         }
         break;
       default:
-        /* Do nothing */
+        //do nothing
         break;
     }
-  }
+  }*/
 }

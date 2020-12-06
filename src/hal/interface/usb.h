@@ -38,7 +38,7 @@
 typedef struct
 {
   uint8_t size;
-  uint8_t data[USB_RX_TX_PACKET_SIZE];
+  uint8_t data[USB_RX_TX_PACKET_SIZE]; //data of the transmission
 } USBPacket;
 
 /**

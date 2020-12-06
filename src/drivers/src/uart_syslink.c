@@ -23,6 +23,8 @@
  *
  * uart_syslink.c - Uart syslink to nRF51 and raw access functions
  */
+
+#define DEBUG_MODULE "UART_SYSLINK"
 #include <stdint.h>
 #include <string.h>
 
@@ -43,6 +45,7 @@
 #include "config.h"
 #include "queuemonitor.h"
 #include "static_mem.h"
+#include "debug.h"
 
 
 #define UARTSLK_DATA_TIMEOUT_MS 1000
@@ -56,6 +59,8 @@ static StaticSemaphore_t waitUntilSendDoneBuffer;
 static xSemaphoreHandle uartBusy;
 static StaticSemaphore_t uartBusyBuffer;
 static xQueueHandle syslinkPacketDelivery;
+
+//allocate queue for 8 packets
 STATIC_MEM_QUEUE_ALLOC(syslinkPacketDelivery, 8, sizeof(SyslinkPacket));
 
 static uint8_t dmaBuffer[64];
@@ -68,6 +73,7 @@ static uint32_t initialDMACount;
 static uint32_t remainingDMACount;
 static bool     dmaIsPaused;
 
+//SyslinkPacket for reading in on interrupt
 static volatile SyslinkPacket slp = {0};
 static volatile SyslinkRxState rxState = waitForFirstStart;
 static volatile uint8_t dataIndex = 0;
@@ -163,7 +169,7 @@ void uartslkInit(void) {
 
   uartslkDmaInit();
 
-  // Configure Rx buffer not empty interrupt
+  //Configure Rx buffer not empty interrupt
   NVIC_InitStructure.NVIC_IRQChannel = UARTSLK_IRQ;
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = NVIC_SYSLINK_PRI;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
@@ -199,8 +205,10 @@ bool uartslkTest(void) {
   return isInit;
 }
 
+//get an incoming parsed radio packet from syslinkPacketDeliv queue into packet, BLOCK UNTIL ONE IS RETRIEVED
 void uartslkGetPacketBlocking(SyslinkPacket* packet) {
-  xQueueReceive(syslinkPacketDelivery, packet, portMAX_DELAY);
+	DEBUG_PRINT("getPacketBlocking()\n");
+   xQueueReceive(syslinkPacketDelivery, packet, portMAX_DELAY);
 }
 
 void uartslkSendData(uint32_t size, uint8_t* data) {
@@ -305,20 +313,26 @@ void uartslkDmaIsr(void) {
   xSemaphoreGiveFromISR(waitUntilSendDone, &xHigherPriorityTaskWoken);
 }
 
-void uartslkHandleDataFromISR(uint8_t c, BaseType_t * const pxHigherPriorityTaskWoken) {
+//reads in one char (byte) at a time from the radio chip over uart, using state machine to parse to Syslink Packet
+void uartslkHandleDataFromISR(uint8_t c, BaseType_t* const pxHigherPriorityTaskWoken) {
   switch (rxState) {
+  //first start: should be 0xBC
   case waitForFirstStart:
     rxState = (c == SYSLINK_START_BYTE1) ? waitForSecondStart : waitForFirstStart;
     break;
+    //second start: should be 0xCF
   case waitForSecondStart:
     rxState = (c == SYSLINK_START_BYTE2) ? waitForType : waitForFirstStart;
     break;
+    //type: could be various of RADIO (0x00), PM (0x10), or OW (0x20)
   case waitForType:
     cksum[0] = c;
     cksum[1] = c;
     slp.type = c;
     rxState = waitForLength;
     break;
+
+    //length: defines the data length
   case waitForLength:
     if (c <= SYSLINK_MTU) {
       slp.length = c;
@@ -326,10 +340,14 @@ void uartslkHandleDataFromISR(uint8_t c, BaseType_t * const pxHigherPriorityTask
       cksum[1] += cksum[0];
       dataIndex = 0;
       rxState = (c > 0) ? waitForData : waitForChksum1;
-    } else {
+    }
+
+    else {
       rxState = waitForFirstStart;
     }
     break;
+
+    //data:
   case waitForData:
     slp.data[dataIndex] = c;
     cksum[0] += c;
@@ -339,26 +357,41 @@ void uartslkHandleDataFromISR(uint8_t c, BaseType_t * const pxHigherPriorityTask
       rxState = waitForChksum1;
     }
     break;
-  case waitForChksum1:
+
+    //2-byte Fletcher 8-bit checksum, calculated using TYPE, LENGTH, DATA
+  case waitForChksum1: //first byte of checksum
     if (cksum[0] == c) {
       rxState = waitForChksum2;
-    } else {
-      rxState = waitForFirstStart; //Checksum error
+    }
+
+    else {
+      rxState = waitForFirstStart; //Checksum error, return to initial state
       IF_DEBUG_ASSERT(0);
     }
     break;
+
+    //second byte of checksum
   case waitForChksum2:
     if (cksum[1] == c) {
-      // Post the packet to the queue if there's room
+
+    	//DONE PARSING
+
+      //Post the packet to the queue if there's room
       if (!xQueueIsQueueFullFromISR(syslinkPacketDelivery)) {
         xQueueSendFromISR(syslinkPacketDelivery, (void *)&slp, pxHigherPriorityTaskWoken);
-      } else {
-        IF_DEBUG_ASSERT(0); // Queue overflow
       }
-    } else {
-      rxState = waitForFirstStart; //Checksum error
+
+      else {
+        IF_DEBUG_ASSERT(0); //Queue overflow
+      }
+    }
+
+    else {
+      rxState = waitForFirstStart; //Checksum error, go back to initial state
       IF_DEBUG_ASSERT(0);
     }
+
+    //go back to initial state to wait for next packet
     rxState = waitForFirstStart;
     break;
   default:
@@ -367,6 +400,7 @@ void uartslkHandleDataFromISR(uint8_t c, BaseType_t * const pxHigherPriorityTask
   }
 }
 
+//interrupt service routine for uart6, the radio chip
 void uartslkIsr(void) {
   portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 
@@ -377,15 +411,21 @@ void uartslkIsr(void) {
   if ((UARTSLK_TYPE->SR & (1 << 5)) != 0) { // if the RXNE interrupt has occurred
     uint8_t rxDataInterrupt = (uint8_t)(UARTSLK_TYPE->DR & 0xFF);
     uartslkHandleDataFromISR(rxDataInterrupt, &xHigherPriorityTaskWoken);
-  } else if (USART_GetITStatus(UARTSLK_TYPE, USART_IT_TXE) == SET) {
+  }
+
+  else if (USART_GetITStatus(UARTSLK_TYPE, USART_IT_TXE) == SET) {
     if (outDataIsr && (dataIndexIsr < dataSizeIsr)) {
       USART_SendData(UARTSLK_TYPE, outDataIsr[dataIndexIsr] & 0x00FF);
       dataIndexIsr++;
-    } else {
+    }
+
+    else {
       USART_ITConfig(UARTSLK_TYPE, USART_IT_TXE, DISABLE);
       xSemaphoreGiveFromISR(waitUntilSendDone, &xHigherPriorityTaskWoken);
     }
-  } else {
+  }
+
+  else {
     /** if we get here, the error is most likely caused by an overrun!
      * - PE (Parity error), FE (Framing error), NE (Noise error), ORE (OverRun error)
      * - and IDLE (Idle line detected) pending bits are cleared by software sequence:
@@ -403,7 +443,9 @@ void uartslkTxenFlowctrlIsr() {
   if (GPIO_ReadInputDataBit(UARTSLK_TXEN_PORT, UARTSLK_TXEN_PIN) == Bit_SET) {
     uartslkPauseDma();
     //ledSet(LED_GREEN_R, 1);
-  } else {
+  }
+
+  else {
     uartslkResumeDma();
     //ledSet(LED_GREEN_R, 0);
   }
@@ -413,6 +455,7 @@ void __attribute__((used)) EXTI4_Callback(void) {
   uartslkTxenFlowctrlIsr();
 }
 
+//set usart6 (I'm guessing that's the radio chip?) handler
 void __attribute__((used)) USART6_IRQHandler(void) {
   uartslkIsr();
 }

@@ -23,6 +23,7 @@
  *
  *
  */
+#define DEBUG_MODULE "CMDR"
 #include <string.h>
 
 #include "FreeRTOS.h"
@@ -36,6 +37,8 @@
 #include "cf_math.h"
 #include "param.h"
 #include "static_mem.h"
+#include "debug.h"
+#include "led.h"
 
 
 static bool isInit;
@@ -77,9 +80,15 @@ void commanderSetSetpoint(setpoint_t *setpoint, int priority) {
 
   if (priority >= currentPriority) {
     setpoint->timestamp = xTaskGetTickCount();
+
+    ledSet(CHG_LED, 0);
+    DEBUG_PRINT("commanderSetSetPoint\n");
+
     // This is a potential race but without effect on functionality
     xQueueOverwrite(setpointQueue, setpoint);
     xQueueOverwrite(priorityQueue, &priority);
+
+
     // Send the high-level planner to idle so it will forget its current state
     // and start over if we switch from low-level to high-level in the future.
     crtpCommanderHighLevelStop();
@@ -92,6 +101,8 @@ void commanderNotifySetpointsStop(int remainValidMillisecs) {
     COMMANDER_WDT_TIMEOUT_SHUTDOWN - M2T(remainValidMillisecs),
     currentTime
   );
+
+
   xQueuePeek(setpointQueue, &tempSetpoint, 0);
   tempSetpoint.timestamp = currentTime - timeSetback;
   xQueueOverwrite(setpointQueue, &tempSetpoint);
@@ -111,7 +122,10 @@ void commanderGetSetpoint(setpoint_t *setpoint, const state_t *state) {
     if (!enableHighLevel || crtpCommanderHighLevelIsStopped()) {
       memcpy(setpoint, &nullSetpoint, sizeof(nullSetpoint));
     }
-  } else if ((currentTime - setpoint->timestamp) > COMMANDER_WDT_TIMEOUT_STABILIZE) {
+  }
+
+
+  else if ((currentTime - setpoint->timestamp) > COMMANDER_WDT_TIMEOUT_STABILIZE) {
     xQueueOverwrite(priorityQueue, &priorityDisable);
     // Leveling ...
     setpoint->mode.x = modeDisable;

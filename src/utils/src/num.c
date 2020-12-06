@@ -88,10 +88,13 @@ float half2single(uint16_t number)
 
 uint16_t limitUint16(int32_t value)
 {
-  if(value > UINT16_MAX)
+	//floor value to 65535 if it's greater
+  if (value > UINT16_MAX)
   {
     value = UINT16_MAX;
   }
+
+  //ceiling value to 0 if it's less
   else if(value < 0)
   {
     value = 0;

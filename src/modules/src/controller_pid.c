@@ -1,3 +1,5 @@
+#define DEBUG_MODULE "CTRL_PID"
+
 
 #include "stabilizer.h"
 #include "stabilizer_types.h"
@@ -10,6 +12,7 @@
 #include "log.h"
 #include "param.h"
 #include "math3d.h"
+#include "debug.h"
 
 #define ATTITUDE_UPDATE_DT    (float)(1.0f/ATTITUDE_RATE)
 
@@ -62,11 +65,16 @@ void controllerPid(control_t *control, setpoint_t *setpoint,
                                          const state_t *state,
                                          const uint32_t tick)
 {
+
+	//DEBUG_PRINT("controllerPid() CALLED\n");
+
   if (RATE_DO_EXECUTE(ATTITUDE_RATE, tick)) {
     // Rate-controled YAW is moving YAW angle setpoint
     if (setpoint->mode.yaw == modeVelocity) {
        attitudeDesired.yaw += setpoint->attitudeRate.yaw * ATTITUDE_UPDATE_DT;
-    } else {
+    }
+
+    else {
       attitudeDesired.yaw = setpoint->attitude.yaw;
     }
 
@@ -82,6 +90,8 @@ void controllerPid(control_t *control, setpoint_t *setpoint,
     if (setpoint->mode.z == modeDisable) {
       actuatorThrust = setpoint->thrust;
     }
+
+
     if (setpoint->mode.x == modeDisable || setpoint->mode.y == modeDisable) {
       attitudeDesired.roll = setpoint->attitude.roll;
       attitudeDesired.pitch = setpoint->attitude.pitch;
@@ -117,9 +127,12 @@ void controllerPid(control_t *control, setpoint_t *setpoint,
     cmd_roll = control->roll;
     cmd_pitch = control->pitch;
     cmd_yaw = control->yaw;
+
+    //get actual roll, pitch, yaw, z accel from IMU
     r_roll = radians(sensors->gyro.x);
     r_pitch = -radians(sensors->gyro.y);
     r_yaw = radians(sensors->gyro.z);
+
     accelz = sensors->acc.z;
   }
 
@@ -132,6 +145,7 @@ void controllerPid(control_t *control, setpoint_t *setpoint,
     control->thrust = actuatorThrust;
   }
 
+  //if no thrust then zero out all commands
   if (control->thrust == 0)
   {
     control->thrust = 0;

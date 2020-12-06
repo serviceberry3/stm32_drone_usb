@@ -53,6 +53,7 @@
 #include "statsCnt.h"
 #include "static_mem.h"
 #include "rateSupervisor.h"
+#include "led.h"
 
 static bool isInit;
 static bool emergencyStop = false;
@@ -196,7 +197,7 @@ void stabilizerInit(StateEstimatorType estimator) {
   collisionAvoidanceInit();
   estimatorType = getStateEstimator();
   controllerType = getControllerType();
-  // return;
+  //return;
   STATIC_MEM_TASK_CREATE(stabilizerTask, stabilizerTask, STABILIZER_TASK_NAME, NULL, STABILIZER_TASK_PRI);
   isInit = true;
 }
@@ -245,7 +246,7 @@ static void stabilizerTask(void* param) {
   while (!sensorsAreCalibrated()) {
     vTaskDelayUntil(&lastWakeTime, F2T(RATE_MAIN_LOOP));
     vTaskDelay(1000);
-    DEBUG_PRINT("stablizer once\n");
+    DEBUG_PRINT("Stabilizer once, sensorsAreCalibrated is FALSE\n");
   }
 
   // Initialize tick to something else then 0
@@ -271,7 +272,9 @@ static void stabilizerTask(void* param) {
     if (testState != testDone) {
       sensorsAcquire(&sensorData, tick);
       testProps(&sensorData);
-    } else {
+    }
+
+    else {
       // allow to update estimator dynamically
       if (getStateEstimator() != estimatorType) {
         stateEstimatorSwitchTo(estimatorType);
@@ -285,22 +288,35 @@ static void stabilizerTask(void* param) {
 
       stateEstimator(&state, &sensorData, &control, tick);
 
+      //log acceleration data
       if (cnt++ == 200) {
-        DEBUG_PRINT("a.x: %f, a.y: %f, a.z: %f\n,", (double) sensorData.acc.x, (double) sensorData.acc.y, (double) sensorData.acc.z);
+        //DEBUG_PRINT("a.x: %f, a.y: %f, a.z: %f\n,", (double) sensorData.acc.x, (double) sensorData.acc.y, (double) sensorData.acc.z);
         cnt = 0;
       }
       
-
       // compress for debug
       compressState();
 
+      //get a setpoint from commander
       commanderGetSetpoint(&setpoint, &state);
+
+
       // compress for debug
       compressSetpoint();
 
       sitAwUpdateSetpoint(&setpoint, &sensorData, &state);
       collisionAvoidanceUpdateSetpoint(&setpoint, &sensorData, &state, tick);
 
+      //ledSet(0, 0);
+     //ledSet(CHG_LED, 0);
+
+     //vTaskDelay(100000);
+
+     //ledSet(CHG_LED, 1);
+     //ledSet(0, 1);
+      //ledSet(1, 1);
+
+      //adjust motors
       controller(&control, &setpoint, &sensorData, &state, tick);
 
       checkEmergencyStopTimeout();
@@ -308,7 +324,9 @@ static void stabilizerTask(void* param) {
       checkStops = systemIsArmed();
       if (emergencyStop || (systemIsArmed() == false)) {
         powerStop();
-      } else {
+      }
+
+      else {
         powerDistribution(&control);
       }
 
@@ -319,6 +337,8 @@ static void stabilizerTask(void* param) {
         usddeckTriggerLogging();
       }
     }
+
+
     calcSensorToOutputLatency(&sensorData);
     tick++;
     STATS_CNT_RATE_EVENT(&stabilizerRate);

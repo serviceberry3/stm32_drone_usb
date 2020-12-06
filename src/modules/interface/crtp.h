@@ -56,16 +56,18 @@ typedef struct _CRTPPacket
     struct {
       union {
         uint8_t header;                 //< Header selecting channel and port
+
         struct {
-#ifndef CRTP_HEADER_COMPAT
-          uint8_t channel     : 2;      //< Selected channel within port
-          uint8_t reserved    : 2;
-          uint8_t port        : 4;      //< Selected port
-#else
-          uint8_t channel  : 2;
-          uint8_t port     : 4;
-          uint8_t reserved : 2;
-#endif
+
+		#ifndef CRTP_HEADER_COMPAT
+				  uint8_t channel     : 2;      //< Selected channel within port
+				  uint8_t reserved    : 2;
+				  uint8_t port        : 4;      //< Selected port
+		#else
+				  uint8_t channel  : 2;
+				  uint8_t port     : 4;
+				  uint8_t reserved : 2;
+		#endif
         };
       };
       uint8_t data[CRTP_MAX_DATA_SIZE]; //< Data

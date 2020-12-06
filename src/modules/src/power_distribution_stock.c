@@ -55,7 +55,7 @@ static struct {
 #define DEFAULT_IDLE_THRUST 0
 #endif
 
-static uint32_t idleThrust = DEFAULT_IDLE_THRUST;
+static uint32_t idleThrust = DEFAULT_IDLE_THRUST; //0
 
 void powerDistributionInit(void) {
   motorsInit(platformConfigGetMotorMapping());
@@ -67,6 +67,7 @@ bool powerDistributionTest(void) {
   return pass;
 }
 
+//correct value to [0, 65535]
 #define limitThrust(VAL) limitUint16(VAL)
 
 void powerStop() {
@@ -77,9 +78,14 @@ void powerStop() {
 }
 
 void powerDistribution(const control_t *control) {
+	//DEBUG_PRINT("powerDistribution(): received thrust request in control_t of %f\n", (double)control->thrust);
+
+
   #ifdef QUAD_FORMATION_X
     int16_t r = control->roll / 2.0f;
     int16_t p = control->pitch / 2.0f;
+
+
     motorPower.m1 = limitThrust(control->thrust - r + p + control->yaw);
     motorPower.m2 = limitThrust(control->thrust - r - p - control->yaw);
     motorPower.m3 =  limitThrust(control->thrust + r - p + control->yaw);
@@ -100,7 +106,10 @@ void powerDistribution(const control_t *control) {
     motorsSetRatio(MOTOR_M2, motorPowerSet.m2);
     motorsSetRatio(MOTOR_M3, motorPowerSet.m3);
     motorsSetRatio(MOTOR_M4, motorPowerSet.m4);
-  } else {
+  }
+
+
+  else {
     if (motorPower.m1 < idleThrust) {
       motorPower.m1 = idleThrust;
     }
@@ -114,6 +123,9 @@ void powerDistribution(const control_t *control) {
       motorPower.m4 = idleThrust;
     }
 
+
+    //DEBUG_PRINT("Setting motor ratios %f, %f, %f, %f resp\n", (double)motorPower.m1,
+    		//(double)motorPower.m2, (double)motorPower.m3, (double)motorPower.m4);
     motorsSetRatio(MOTOR_M1, motorPower.m1);
     motorsSetRatio(MOTOR_M2, motorPower.m2);
     motorsSetRatio(MOTOR_M3, motorPower.m3);

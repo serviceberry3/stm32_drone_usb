@@ -233,10 +233,15 @@ void motorsSetRatio(uint32_t id, uint16_t ithrust) {
   //   DEBUG_PRINT("m100: %d\n", motorsConv16ToBits(ratio));
   //   cnt = 0;
   // }
+
+    //ratio = 2000;
   
     if (motorMap[id]->drvType == BRUSHLESS) {
       motorMap[id]->setCompare(motorMap[id]->tim, motorsBLConv16ToBits(ratio));
-    } else {
+    }
+
+
+    else {
       motorMap[id]->setCompare(motorMap[id]->tim, motorsConv16ToBits(ratio));
     }
   }

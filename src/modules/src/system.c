@@ -103,6 +103,7 @@ void systemInit(void) {
   canStartMutex = xSemaphoreCreateMutexStatic(&canStartMutexBuffer);
   xSemaphoreTake(canStartMutex, portMAX_DELAY);
 
+  //init the USB comms link
   usblinkInit();
   sysLoadInit();
 
@@ -128,11 +129,20 @@ void systemInit(void) {
               *((int*)(MCU_ID_ADDRESS + 8)), *((int*)(MCU_ID_ADDRESS + 4)),
               *((int*)(MCU_ID_ADDRESS + 0)), *((short*)(MCU_FLASH_SIZE_ADDRESS)));
 
+
+  //DEBUG_PRINT("Running configblockInit...\n");
   configblockInit();
+
+  //DEBUG_PRINT("Configblock done\n");
   workerInit();
+  //DEBUG_PRINT("Worker done\n");
   adcInit();
+  //DEBUG_PRINT("adc done\n");
   ledseqInit();
+ // DEBUG_PRINT("ledseq done\n");
   pmInit();
+
+  //DEBUG_PRINT("Tests done\n");
   // buzzerInit(); // this does nothing
   // peerLocalizationInit(); // this does nothing
 
@@ -171,14 +181,16 @@ void systemTask(void *arg) {
   uart2Init(115200);
 #endif
 
-  // Init the high-levels modules
+  //Init the high-levels modules
   systemInit();
   commInit();
   commanderInit();
 
   StateEstimatorType estimator = anyEstimator;
+
   estimatorKalmanTaskInit();
-  deckInit(); // remain to be tested
+
+  deckInit(); // remains to be tested
   estimator = deckGetRequiredEstimator();
   stabilizerInit(estimator);
 
@@ -205,7 +217,10 @@ void systemTask(void *arg) {
   pass &= memTest();
   pass &= watchdogNormalStartTest();
   pass &= peerLocalizationTest();
-  if (pass == false) DEBUG_PRINT("sys failed3\n");
+
+
+
+  if (pass == false) DEBUG_PRINT("System failed3\n");
   // Start the firmware
   if (pass) {
     selftestPassed = 1;
@@ -213,7 +228,11 @@ void systemTask(void *arg) {
     soundSetEffect(SND_STARTUP);
     ledseqRun(&seq_alive);
     ledseqRun(&seq_testPassed);
-  } else {
+  }
+
+
+
+  else {
     selftestPassed = 0;
     if (systemTest()) {
       while(1) {
@@ -226,11 +245,15 @@ void systemTask(void *arg) {
           break;
         }
       }
-    } else {
+    }
+
+    else {
       ledInit();
       ledSet(SYS_LED, true);
     }
   }
+
+
   DEBUG_PRINT("Free heap: %d bytes\n", xPortGetFreeHeapSize());
 
   workerLoop();

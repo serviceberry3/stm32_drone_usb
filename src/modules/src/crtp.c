@@ -54,7 +54,7 @@ static struct crtpLinkOperations nopLink = {
   .receivePacket     = (void*) nopFunc,
 };
 
-static struct crtpLinkOperations *link = &nopLink;
+static struct crtpLinkOperations* link = &nopLink;
 
 #define STATS_INTERVAL 500
 static struct {
@@ -68,7 +68,7 @@ static struct {
   uint32_t previousStatisticsTime;
 } stats;
 
-static xQueueHandle  txQueue;
+static xQueueHandle txQueue;
 
 #define CRTP_NBR_OF_PORTS 16
 #define CRTP_TX_QUEUE_SIZE 120
@@ -88,6 +88,7 @@ void crtpInit(void) {
   if (isInit)
     return;
 
+  //create the outbound transmit queue
   txQueue = xQueueCreate(CRTP_TX_QUEUE_SIZE, sizeof(CRTPPacket));
   DEBUG_QUEUE_MONITOR_REGISTER(txQueue);
 
@@ -108,6 +109,7 @@ void crtpInitTaskQueue(CRTPPort portId) {
   DEBUG_QUEUE_MONITOR_REGISTER(queues[portId]);
 }
 
+//receive a packet off a given port's queue, into p
 int crtpReceivePacket(CRTPPort portId, CRTPPacket *p) {
   ASSERT(queues[portId]);
   ASSERT(p);
@@ -139,22 +141,30 @@ void crtpTxTask(void *param) {
 
   while (1) {
     if (link != &nopLink) {
+    	//get a packet off the to-be-transmitted queue
       if (xQueueReceive(txQueue, &p, portMAX_DELAY) == pdTRUE) {
-        // Keep testing, if the link changes to USB it will go though
+    	  //send packet using radio link
+        // Keep checking, if the link changes to USB it will go through
         while (link->sendPacket(&p) == false) {
-          // Relaxation time
+
+
+          //Relaxation time to let the packet send
           vTaskDelay(M2T(10));
         }
+
+        //up the tx counter
         stats.txCount++;
         updateStats();
       }
-    } else {
+    }
+
+    else {
       vTaskDelay(M2T(10));
     }
   }
 }
 
-// Guojn: define struct here for debug
+// Guojun: define struct here for debug
 struct CommanderCrtpLegacyValues {
   float roll;       // deg
   float pitch;      // deg
@@ -162,40 +172,71 @@ struct CommanderCrtpLegacyValues {
   uint16_t thrust;
 } __attribute__((packed));
 
+
+//receiving task (runs infinitely)
 void crtpRxTask(void *param) {
+	//packet to be received
   CRTPPacket p;
   vTaskDelay(M2T(5000));
+
+
+  //infinite loop
   while (1) {
-    // Guojun: fake packet
+	/*
+    //Guojun: fake radio packet
     p.port = CRTP_PORT_SETPOINT;
     p.channel = 0;
     struct CommanderCrtpLegacyValues *values = (struct CommanderCrtpLegacyValues*) p.data;
-    values->thrust = 8000;
+    values->thrust = 40000;
+
+
     callbacks[p.port](&p);
+
+	 */
     vTaskDelay(M2T(200));
 
+
+
+
+    //make sure some link was set
     if (link != &nopLink) {
+    	//DEBUG_PRINT("crtpRxTask calling receivePacket on link at high lvl\n");
+    	//receive a packet using RADIOLINK (calls radiolink's radiolinkReceiveCRTPPacket)
+
+    	//in our case, we want to receive packet into p by USB, not the radiolink
       if (!link->receivePacket(&p)) {
-        if (queues[p.port]) {
-          if (xQueueSend(queues[p.port], &p, 0) == errQUEUE_FULL) {
-            // We should never drop packet
+    	  //DEBUG_PRINT("crtp.c: radiolink receivePacket() got an incoming packet successfully, port is %d\n", p.port);
+    	  //0 means the receivePacket call was successful
+
+
+    	  //CHANGED: force CRTP_PORT_SETPOINT queue and callback
+        if (queues[3]) {
+        	//put the received packet on the appropriate queue based on port
+          if (xQueueSend(queues[3], &p, 0) == errQUEUE_FULL) {
+            //We should never drop packet
             ASSERT(0);
           }
         }
 
-        if (callbacks[p.port]) {
-          callbacks[p.port](&p);
+        //call the callback fxn
+        if (callbacks[3]) {
+          callbacks[3](&p);
         }
 
+        //up the received count
         stats.rxCount++;
         updateStats();
       }
-    } else {
+    }
+
+
+    else {
       vTaskDelay(M2T(10));
     }
   }
 }
 
+//register callback fxn for a given port
 void crtpRegisterPortCB(int port, CrtpCallback cb) {
   if (port > CRTP_NBR_OF_PORTS)
     return;
@@ -207,6 +248,7 @@ int crtpSendPacket(CRTPPacket *p) {
   ASSERT(p);
   ASSERT(p->size <= CRTP_MAX_DATA_SIZE);
 
+  //queue up the packet to be sent over UART to radio chip, then to the controller
   return xQueueSend(txQueue, p, 0);
 }
 
@@ -232,7 +274,7 @@ bool crtpIsConnected(void) {
   return true;
 }
 
-void crtpSetLink(struct crtpLinkOperations * lk) {
+void crtpSetLink(struct crtpLinkOperations* lk) {
   if (link)
     link->setEnable(false);
 

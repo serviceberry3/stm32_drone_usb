@@ -23,7 +23,7 @@
  *
  * radiolink.c - Radio link layer
  */
-
+#define DEBUG_MODULE "RADIOLINK"
 #include <string.h>
 #include <stdint.h>
 
@@ -43,6 +43,8 @@
 #include "ledseq.h"
 #include "queuemonitor.h"
 #include "static_mem.h"
+#include "debug.h"
+#include "usb.h"
 
 #define RADIOLINK_TX_QUEUE_SIZE (1)
 #define RADIOLINK_CRTP_QUEUE_SIZE (5)
@@ -50,13 +52,15 @@
 
 #define RADIOLINK_P2P_QUEUE_SIZE (5)
 
-static xQueueHandle  txQueue;
+static xQueueHandle txQueue;
 STATIC_MEM_QUEUE_ALLOC(txQueue, RADIOLINK_TX_QUEUE_SIZE, sizeof(SyslinkPacket));
 
 static xQueueHandle crtpPacketDelivery;
 STATIC_MEM_QUEUE_ALLOC(crtpPacketDelivery, RADIOLINK_CRTP_QUEUE_SIZE, sizeof(CRTPPacket));
 
 static bool isInit;
+
+static uint8_t sendBuffer[1];
 
 static int radiolinkSendCRTPPacket(CRTPPacket *p);
 static int radiolinkSetEnable(bool enable);
@@ -84,6 +88,7 @@ void radiolinkInit(void) {
   if (isInit)
     return;
 
+  //create queues for transmitting data and "delivering packets"
   txQueue = STATIC_MEM_QUEUE_CREATE(txQueue);
   DEBUG_QUEUE_MONITOR_REGISTER(txQueue);
   crtpPacketDelivery = STATIC_MEM_QUEUE_CREATE(crtpPacketDelivery);
@@ -91,6 +96,7 @@ void radiolinkInit(void) {
 
   ASSERT(crtpPacketDelivery);
 
+  //init the syslink task to read over UART packets from radio chip
   syslinkInit();
 
   radiolinkSetChannel(configblockGetRadioChannel());
@@ -140,32 +146,80 @@ void radiolinkSetPowerDbm(int8_t powerDbm) {
   syslinkSendPacket(&slp);
 }
 
-
+//this is called by syslinkTask->sysLinkRouteIncommingPacket
 void radiolinkSyslinkDispatch(SyslinkPacket *slp) {
+	//the ack to be sent back to the controller
   static SyslinkPacket txPacket;
 
+  //raw radio packets
   if (slp->type == SYSLINK_RADIO_RAW || slp->type == SYSLINK_RADIO_RAW_BROADCAST) {
     lastPacketTick = xTaskGetTickCount();
   }
 
   if (slp->type == SYSLINK_RADIO_RAW) {
-    slp->length--; // Decrease to get CRTP size.
-    xQueueSend(crtpPacketDelivery, &slp->length, 0);
+	 //DEBUG_PRINT("radiolinkSyslinkDispatch(): type of incoming pkt does = SYSLINK_RADIO_RAW\n");
+
+    slp->length--; //Decrease to get CRTP size.
+
+    //put this incoming SyslinkPacket (from the radio chip) on the crtp packet queue, passing memory address where length starts
+    xQueueSend(crtpPacketDelivery, (&slp->length - 1), 0); //ADJUST
+
     ledseqRun(&seq_linkUp);
-    // If a radio packet is received, one can be sent
+
+
+
+    //ACK SENDING CODE
+
+    //If a radio packet is received, get packet off the txQueue to be sent
     if (xQueueReceive(txQueue, &txPacket, 0) == pdTRUE) {
+    	//run some indicator LEDs
       ledseqRun(&seq_linkDown);
+
+      //DEBUG_PRINT("radiolinkSyslinkDispatch(): sending ACK\n");
+
+      //send the ack packet to the controller (PC or phone)
       syslinkSendPacket(&txPacket);
     }
-  } else if (slp->type == SYSLINK_RADIO_RAW_BROADCAST) {
+
+    //NOAH CHANGE: SEND TEMPORARY ACK 0x09
+    sendBuffer[0] = 9;
+    usbSendData(1, sendBuffer);
+  }
+
+  //if it's a NULL packet
+  else if (slp->type == 0xff) {
+	  //DEBUG_PRINT("radiolinkSyslinkDispatch(): type of incoming pkt is NULL PKT\n");
+
+	  if (xQueueReceive(txQueue, &txPacket, 0) == pdTRUE) {
+	      	//run some indicator LEDs
+	        ledseqRun(&seq_linkDown);
+
+	        //DEBUG_PRINT("radiolinkSyslinkDispatch(): sending ACK\n");
+
+	        //send the ack packet to the controller (PC or phone)
+	        syslinkSendPacket(&txPacket);
+	      }
+	  else {
+		  //DEBUG_PRINT("radiolinkSyslinkDispatch(): no ack packet waiting on txPacket queue\n");
+	  }
+  }
+
+
+  else if (slp->type == SYSLINK_RADIO_RAW_BROADCAST) {
     slp->length--; // Decrease to get CRTP size.
     xQueueSend(crtpPacketDelivery, &slp->length, 0);
     ledseqRun(&seq_linkUp);
-    // no ack for broadcasts
-  } else if (slp->type == SYSLINK_RADIO_RSSI) {
+
+    //NOTE: NO ACK SENT BACK FOR BROADCASTS
+  }
+
+  else if (slp->type == SYSLINK_RADIO_RSSI) {
     //Extract RSSI sample sent from radio
     memcpy(&rssi, slp->data, sizeof(uint8_t)); //rssi will not change on disconnect
-  } else if (slp->type == SYSLINK_RADIO_P2P_BROADCAST) {
+  }
+
+
+  else if (slp->type == SYSLINK_RADIO_P2P_BROADCAST) {
     ledseqRun(&seq_linkUp);
     P2PPacket p2pp;
     p2pp.port=slp->data[0];
@@ -176,14 +230,21 @@ void radiolinkSyslinkDispatch(SyslinkPacket *slp) {
         p2p_callback(&p2pp);
   }
 
+  //check if link still connected
   isConnected = radiolinkIsConnected();
 }
 
+//receive CRTP packet into p from the crtpPacketDelivery queue. NOT BLOCKING apparently
 static int radiolinkReceiveCRTPPacket(CRTPPacket *p) {
+
+
+	//get packet off crtpPacketDelivery queue into p
   if (xQueueReceive(crtpPacketDelivery, p, M2T(100)) == pdTRUE) {
+	//DEBUG_PRINT("radiolinkReceiveCRTPPacket(): packet received successfully\n");
     return 0;
   }
 
+  //DEBUG_PRINT("radiolinkReceiveCRTPPacket(): no packet found\n");
   return -1;
 }
 
@@ -191,6 +252,7 @@ void p2pRegisterCB(P2PCallback cb) {
     p2p_callback = cb;
 }
 
+//send the passed packet by putting it on the txQueue
 static int radiolinkSendCRTPPacket(CRTPPacket *p) {
   static SyslinkPacket slp;
 

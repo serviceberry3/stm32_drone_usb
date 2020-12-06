@@ -45,10 +45,10 @@
  * CRTP commander rpyt packet format
  */
 struct CommanderCrtpLegacyValues {
-  float roll;       // deg
-  float pitch;      // deg
-  float yaw;        // deg
-  uint16_t thrust;
+  float roll;       // deg //4 bytes
+  float pitch;      // deg //4 bytes
+  float yaw;        // deg //4 bytes
+  uint16_t thrust;         //2 bytes
 } __attribute__((packed));
 
 /**
@@ -114,25 +114,54 @@ static void yawModeUpdate(setpoint_t *setpoint) {
   }
 }
 
+
+//decode incoming control data packet
 void crtpCommanderRpytDecodeSetpoint(setpoint_t *setpoint, CRTPPacket *pk) {
-  struct CommanderCrtpLegacyValues *values = (struct CommanderCrtpLegacyValues*) pk->data;
-  
+	//get thrust, roll, pitch, yaw data. OUR DATA RN IS 17 BYTES
+	//print out the packet received
+		   /*DEBUG_PRINT("Pkt data: 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X "
+		    		"0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n"
+
+		    		0x%02X "
+		    		"0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X "
+		    		"0x%02X 0x%02X 0x%02X 0x%02X\n",
+
+
+					pk->data[0], pk->data[1], pk->data[2], pk->data[3], pk->data[4], pk->data[5],
+					pk->data[6], pk->data[7], pk->data[8], pk->data[9], pk->data[10], pk->data[11],
+					pk->data[12], pk->data[13]);*/
+
+	//IGNORE FIRST THREE BYTES. NEXT 14 are: ROLL(4) | PITCH(4) | YAW(4) | THRUST(2)
+  //struct CommanderCrtpLegacyValues *values = (struct CommanderCrtpLegacyValues*) (((void*)pk->data) + 3); //CHANGE: ADJUST PTR
+	struct CommanderCrtpLegacyValues *values = (struct CommanderCrtpLegacyValues*) pk->data;
+
   if (commanderGetActivePriority() == COMMANDER_PRIORITY_DISABLE) {
     thrustLocked = true;
   }
 
-  // Guojun: for debug
+
+  //Guojun: for debug
   if (values->thrust == 0 || 1) {
     thrustLocked = false;
   }
 
-  // Thrust
+  //NOAH CHANGE: FORCE thrustLocked FALSE
+  thrustLocked = false;
+
+  //Thrust
   uint16_t rawThrust = values->thrust;
+  //DEBUG_PRINT("crtp rpyt rawThrust is %d\n", rawThrust);
 
   if (thrustLocked || (rawThrust < MIN_THRUST)) {
     setpoint->thrust = 0;
-  } else {
+  }
+
+
+  else {
+	//set the thrust arg, flooring it to MAX_THRUST if it exceeds
+
     setpoint->thrust = fminf(rawThrust, MAX_THRUST);
+    //DEBUG_PRINT("crtp rpyt setting thrust %f\n", (double)setpoint->thrust);
   }
 
   
@@ -141,10 +170,14 @@ void crtpCommanderRpytDecodeSetpoint(setpoint_t *setpoint, CRTPPacket *pk) {
     setpoint->mode.z = modeVelocity;
 
     setpoint->velocity.z = ((float) rawThrust - 32767.f) / 32767.f;
-  } else {
+  }
+
+  else {
     setpoint->mode.z = modeDisable;
   }
-  // roll/pitch
+
+
+  //roll/pitch
   if (posHoldMode) {
     setpoint->mode.x = modeVelocity;
     setpoint->mode.y = modeVelocity;
@@ -155,7 +188,9 @@ void crtpCommanderRpytDecodeSetpoint(setpoint_t *setpoint, CRTPPacket *pk) {
     setpoint->velocity.y = values->roll / 30.0f;
     setpoint->attitude.roll  = 0;
     setpoint->attitude.pitch = 0;
-  } else if (posSetMode && values->thrust != 0) {
+  }
+
+  else if (posSetMode && values->thrust != 0) {
     setpoint->mode.x = modeAbs;
     setpoint->mode.y = modeAbs;
     setpoint->mode.z = modeAbs;
@@ -171,7 +206,9 @@ void crtpCommanderRpytDecodeSetpoint(setpoint_t *setpoint, CRTPPacket *pk) {
     setpoint->attitude.pitch = 0;
     setpoint->attitude.yaw = values->yaw;
     setpoint->thrust = 0;
-  } else {
+  }
+
+  else {
     setpoint->mode.x = modeDisable;
     setpoint->mode.y = modeDisable;
 
@@ -179,7 +216,9 @@ void crtpCommanderRpytDecodeSetpoint(setpoint_t *setpoint, CRTPPacket *pk) {
       setpoint->mode.roll = modeVelocity;
       setpoint->attitudeRate.roll = values->roll;
       setpoint->attitude.roll = 0;
-    } else {
+    }
+
+    else {
       setpoint->mode.roll = modeAbs;
       setpoint->attitudeRate.roll = 0;
       setpoint->attitude.roll = values->roll;
@@ -207,7 +246,9 @@ void crtpCommanderRpytDecodeSetpoint(setpoint_t *setpoint, CRTPPacket *pk) {
       yawModeUpdate(setpoint);
 
       setpoint->mode.yaw = modeVelocity;
-    } else {
+    }
+
+    else {
       setpoint->mode.yaw = modeAbs;
       setpoint->attitudeRate.yaw = 0;
       setpoint->attitude.yaw = values->yaw;
