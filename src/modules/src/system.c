@@ -131,7 +131,7 @@ void systemInit(void) {
 
 
   //DEBUG_PRINT("Running configblockInit...\n");
-  configblockInit();
+  //configblockInit();
 
   //DEBUG_PRINT("Configblock done\n");
   workerInit();
@@ -207,15 +207,15 @@ void systemTask(void *arg) {
 
   // Test the modules
   pass &= systemTest();
-  pass &= configblockTest();
+  //pass &= configblockTest();
   pass &= commTest();
   pass &= commanderTest();
   pass &= stabilizerTest();
   pass &= estimatorKalmanTaskTest();
   pass &= deckTest();
   // pass &= soundTest();
-  pass &= memTest();
-  pass &= watchdogNormalStartTest();
+  //pass &= memTest();
+ // pass &= watchdogNormalStartTest();
   pass &= peerLocalizationTest();
 
 

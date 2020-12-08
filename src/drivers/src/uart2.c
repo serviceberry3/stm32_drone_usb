@@ -209,27 +209,36 @@ void uart2SendData(uint32_t size, uint8_t* data) {
   }
 }
 
-//looks like this is being used to send ack pkts back to radio chip
+//looks like this is being used to send ack pkts back to radio chip************************
 void uart2SendDataDmaBlocking(uint32_t size, uint8_t* data) {
 	DEBUG_PRINT("uart2SendDataDmaBlocking()\n");
 
   if (isUartDmaInitialized) {
+	  //lock uartBusy mutex
     xSemaphoreTake(uartBusy, portMAX_DELAY);
+
     // Wait for DMA to be free
     while (DMA_GetCmdStatus(UART2_DMA_STREAM) != DISABLE);
-    //Copy data in DMA buffer
+
+    //Copy data into DMA buffer
     memcpy(dmaBuffer, data, size);
+
+    //set size appropriately for the init struct
     DMA_InitStructureShare.DMA_BufferSize = size;
     initialDMACount = size;
 
     // Init new DMA stream
     DMA_Init(UART2_DMA_STREAM, &DMA_InitStructureShare);
+
     // Enable the Transfer Complete interrupt
     DMA_ITConfig(UART2_DMA_STREAM, DMA_IT_TC, ENABLE);
+
     /* Enable USART DMA TX Requests */
     USART_DMACmd(UART2_TYPE, USART_DMAReq_Tx, ENABLE);
+
     /* Clear transfer complete */
     USART_ClearFlag(UART2_TYPE, USART_FLAG_TC);
+
     /* Enable DMA USART TX Stream */
     DMA_Cmd(UART2_DMA_STREAM, ENABLE);
 

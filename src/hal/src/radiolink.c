@@ -151,10 +151,11 @@ void radiolinkSyslinkDispatch(SyslinkPacket *slp) {
 	//the ack to be sent back to the controller
   static SyslinkPacket txPacket;
 
+  /*
   //raw radio packets
   if (slp->type == SYSLINK_RADIO_RAW || slp->type == SYSLINK_RADIO_RAW_BROADCAST) {
     lastPacketTick = xTaskGetTickCount();
-  }
+  }*/
 
   if (slp->type == SYSLINK_RADIO_RAW) {
 	 //DEBUG_PRINT("radiolinkSyslinkDispatch(): type of incoming pkt does = SYSLINK_RADIO_RAW\n");
@@ -170,6 +171,7 @@ void radiolinkSyslinkDispatch(SyslinkPacket *slp) {
 
     //ACK SENDING CODE
 
+    /*
     //If a radio packet is received, get packet off the txQueue to be sent
     if (xQueueReceive(txQueue, &txPacket, 0) == pdTRUE) {
     	//run some indicator LEDs
@@ -179,7 +181,7 @@ void radiolinkSyslinkDispatch(SyslinkPacket *slp) {
 
       //send the ack packet to the controller (PC or phone)
       syslinkSendPacket(&txPacket);
-    }
+    }*/
 
     //NOAH CHANGE: SEND TEMPORARY ACK 0x09
     sendBuffer[0] = 9;
@@ -231,7 +233,7 @@ void radiolinkSyslinkDispatch(SyslinkPacket *slp) {
   }
 
   //check if link still connected
-  isConnected = radiolinkIsConnected();
+  //isConnected = radiolinkIsConnected();
 }
 
 //receive CRTP packet into p from the crtpPacketDelivery queue. NOT BLOCKING apparently

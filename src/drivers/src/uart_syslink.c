@@ -244,26 +244,42 @@ int uartslkPutchar(int ch) {
     return (unsigned char)ch;
 }
 
+//send data to UART peripheral using DMA (not interrupting CPU, so faster)
 void uartslkSendDataDmaBlocking(uint32_t size, uint8_t* data) {
   if (isUartDmaInitialized) {
+
+	  //take the uartBusy mutex
     xSemaphoreTake(uartBusy, portMAX_DELAY);
+
     // Wait for DMA to be free
     while (DMA_GetCmdStatus(UARTSLK_DMA_STREAM) != DISABLE);
-    //Copy data in DMA buffer
+
+    //Copy data into DMA buffer
     memcpy(dmaBuffer, data, size);
+
     DMA_InitStructureShare.DMA_BufferSize = size;
+
     initialDMACount = size;
+
     // Init new DMA stream
     DMA_Init(UARTSLK_DMA_STREAM, &DMA_InitStructureShare);
+
     // Enable the Transfer Complete interrupt
     DMA_ITConfig(UARTSLK_DMA_STREAM, DMA_IT_TC, ENABLE);
+
     /* Enable USART DMA TX Requests */
     USART_DMACmd(UARTSLK_TYPE, USART_DMAReq_Tx, ENABLE);
+
     /* Clear transfer complete */
     USART_ClearFlag(UARTSLK_TYPE, USART_FLAG_TC);
+
     /* Enable DMA USART TX Stream */
     DMA_Cmd(UARTSLK_DMA_STREAM, ENABLE);
+
+    //take the waitUntilSendDone mutex
     xSemaphoreTake(waitUntilSendDone, portMAX_DELAY);
+
+    //release the uartBusy mutex
     xSemaphoreGive(uartBusy);
   }
 }
@@ -300,6 +316,7 @@ static void uartslkResumeDma() {
   }
 }
 
+//DMA handler used for sending on uart, I think
 void uartslkDmaIsr(void) {
   portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 

@@ -82,7 +82,7 @@ void commanderSetSetpoint(setpoint_t *setpoint, int priority) {
     setpoint->timestamp = xTaskGetTickCount();
 
     ledSet(CHG_LED, 0);
-    DEBUG_PRINT("commanderSetSetPoint\n");
+    //DEBUG_PRINT("commanderSetSetPoint\n");
 
     // This is a potential race but without effect on functionality
     xQueueOverwrite(setpointQueue, setpoint);

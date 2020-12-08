@@ -177,7 +177,6 @@ struct CommanderCrtpLegacyValues {
 void crtpRxTask(void *param) {
 	//packet to be received
   CRTPPacket p;
-  vTaskDelay(M2T(5000));
 
 
   //infinite loop
@@ -189,13 +188,10 @@ void crtpRxTask(void *param) {
     struct CommanderCrtpLegacyValues *values = (struct CommanderCrtpLegacyValues*) p.data;
     values->thrust = 40000;
 
-
+    //we have our fake packet, so call the callback
     callbacks[p.port](&p);
 
 	 */
-    vTaskDelay(M2T(200));
-
-
 
 
     //make sure some link was set
@@ -222,6 +218,7 @@ void crtpRxTask(void *param) {
         if (callbacks[3]) {
           callbacks[3](&p);
         }
+
 
         //up the received count
         stats.rxCount++;

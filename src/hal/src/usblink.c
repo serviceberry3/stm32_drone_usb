@@ -75,7 +75,7 @@ static struct crtpLinkOperations usblinkOp =
 static void usblinkTask(void *param) {
   while (1) {
 
-    //Fetch a USB packet off the queue. BLOCKING fxn so it blocks other work till complete
+    //Fetch a USB packet off the queue. BLOCKING fxn so it blocks thread till complete
 	  //(foreground run)
     usbGetDataBlocking(&usbIn);
 
@@ -155,6 +155,7 @@ void usblinkInit() {
   //Initialize the USB peripheral for the MCU
   usbInit();
 
+  //create USB CRTP packet queue
   crtpPacketDelivery = STATIC_MEM_QUEUE_CREATE(crtpPacketDelivery);
 
   DEBUG_QUEUE_MONITOR_REGISTER(crtpPacketDelivery);

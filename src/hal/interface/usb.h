@@ -66,7 +66,7 @@ struct crtpLinkOperations * usbGetLink();
  * Get data from rx queue with timeout.
  * @param[out] c  Byte of data
  *
- * @return true if byte received, false if timout reached.
+ * @return true if byte received, false if timeout reached.
  */
 bool usbGetDataBlocking(USBPacket *in);
 

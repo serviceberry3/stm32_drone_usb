@@ -57,7 +57,7 @@ NO_DMA_CCM_SAFE_ZERO_INIT __ALIGN_BEGIN USB_OTG_CORE_HANDLE    USB_OTG_dev __ALI
 static bool isInit = false;
 static bool doingTransfer = false;
 
-// This should probably be reduced to a CRTP packet size
+//TODO: This should probably be reduced to a CRTP packet size
 static xQueueHandle usbDataRx;
 STATIC_MEM_QUEUE_ALLOC(usbDataRx, 5, sizeof(USBPacket)); /* Buffer USB packets (max 64 bytes) */
 static xQueueHandle usbDataTx;
@@ -83,6 +83,7 @@ __ALIGN_BEGIN uint8_t  usbd_cf_CfgDesc[57] __ALIGN_END = {
   0,                         //iConfiguration
   0x80,                      //bmAttribute (Bus powered, no remote wakeup)
   50,                        //bMaxPower (100mA, shall be enough)
+
   /***** Interface 0 descriptor: Crazyradio EPs ******/
   9,                         //bLength
   INTERFACE_DESCRIPTOR,      //bDescriptorType
@@ -93,6 +94,7 @@ __ALIGN_BEGIN uint8_t  usbd_cf_CfgDesc[57] __ALIGN_END = {
   0xFF,                      //bInterfaceSubClass (VENDOR=0xFF)
   0,                         //bInterfaceProtocol (None)
   0,                         //iInterface
+
   /***** Endpoint 1 IN descriptor ******/
   7,                         //bLength
   ENDPOINT_DESCRIPTOR,       //bDescriptorType
@@ -100,6 +102,7 @@ __ALIGN_BEGIN uint8_t  usbd_cf_CfgDesc[57] __ALIGN_END = {
   0x02,                      //bmAttributes (Bulk endpoint)
   0x40, 0x00,                //wMaxPacketSize (64 bytes)
   6,                         //bInterval (irrelevant for bulk endpoint)
+
   /***** Endpoint 1 OUT descriptor ******/
   7,                         //bLength
   ENDPOINT_DESCRIPTOR,       //bDescriptorType
@@ -218,6 +221,8 @@ static uint8_t  usbd_cf_DeInit (void  *pdev,
   return USBD_OK;
 }
 
+
+//SENDING DATA OVER USB
 /**
   * @brief  usbd_audio_DataIn
   *         Data sent on non-control IN endpoint
@@ -235,6 +240,17 @@ static uint8_t usbd_cf_DataIn (void *pdev, uint8_t epnum)
   if (xQueueReceiveFromISR(usbDataTx, &outPacket, &xTaskWokenByReceive) == pdTRUE)
   {
     doingTransfer = true;
+
+
+    /**
+    * @brief  Transmit data over USB
+    * @param pdev: device instance
+    * @param ep_addr: endpoint address
+    * @param pbuf: pointer to Tx buffer
+    * @param buf_len: data length
+    * @retval : status
+    */
+    //do the outgoing data transfer, transferring data from outPacket to USB IN_EP
     DCD_EP_Tx (pdev,
               IN_EP,
               (uint8_t*)outPacket.data,
@@ -266,6 +282,8 @@ static uint8_t usbd_cf_SOF (void *pdev)
   return USBD_OK;
 }
 
+
+//RECEIVING DATA OVER USB. This is an interrupt service routine.
 /**
   * @brief  usbd_cf_DataOut
   *         Data received on non-control Out endpoint
@@ -273,21 +291,26 @@ static uint8_t usbd_cf_SOF (void *pdev)
   * @param  epnum: endpoint number
   * @retval status
   */
-static uint8_t  usbd_cf_DataOut (void *pdev, uint8_t epnum)
+static uint8_t usbd_cf_DataOut (void *pdev, uint8_t epnum)
 {
   portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 
   /* Get the received data buffer and update the counter */
   inPacket.size = ((USB_OTG_CORE_HANDLE*)pdev)->dev.out_ep[epnum].xfer_count;
 
-  //put the incoming data on rx queue
+  //put the incoming data on rx queue to be picked up by usbGetDataBlocking()
   xQueueSendFromISR(usbDataRx, &inPacket, &xHigherPriorityTaskWoken);
 
+  /**
+  * @brief  DCD_EP_PrepareRx
+  * @param pdev: device instance
+  * @param ep_addr: endpoint address
+  * @param pbuf: pointer to Rx buffer
+  * @param buf_len: data length
+  * @retval : status
+  */
   /* Prepare Out endpoint to receive next packet */
-  DCD_EP_PrepareRx(pdev,
-                   OUT_EP,
-                   (uint8_t*)(inPacket.data),
-                   USB_RX_TX_PACKET_SIZE);
+  DCD_EP_PrepareRx(pdev, OUT_EP, (uint8_t*)(inPacket.data),USB_RX_TX_PACKET_SIZE);
 
   return USBD_OK;
 }
@@ -373,7 +396,7 @@ void USBD_USR_DeviceDisconnected(void) {
   resetUSB();
 }
 
-//main usb initialization fxn
+//main usb initialization fxn*****
 void usbInit(void) {
   USBD_Init(&USB_OTG_dev,
             USB_OTG_FS_CORE_ID,
@@ -411,11 +434,11 @@ bool usbGetDataBlocking(USBPacket *in) {
 static USBPacket outStage;
 
 
-
+//put passed data onto the USB tx queue
 bool usbSendData(uint32_t size, uint8_t* data) {
   outStage.size = size;
   memcpy(outStage.data, data, size);
 
-  //Don't block when sending (run in background)
+  //Don't block when sending
   return (xQueueSend(usbDataTx, &outStage, M2T(100)) == pdTRUE);
 }

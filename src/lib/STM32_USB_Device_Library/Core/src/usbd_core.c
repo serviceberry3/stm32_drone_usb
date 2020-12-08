@@ -124,7 +124,7 @@ USBD_DCD_INT_cb_TypeDef  *USBD_DCD_INT_fops = &USBD_DCD_INT_cb;
 
 /**
 * @brief  USBD_Init
-*         Initailizes the device stack and load the class driver
+*         Initializes the device stack and load the class driver
 * @param  pdev: device instance
 * @param  core_address: USB OTG core ID
 * @param  class_cb: Class callback structure address
@@ -140,6 +140,7 @@ void USBD_Init(USB_OTG_CORE_HANDLE *pdev,
   /* Hardware Init */
   USB_OTG_BSP_Init(pdev);  
   
+  //deinit if it had previously be init to make sure
   USBD_DeInit(pdev);
   
   /*Register class and user callbacks */

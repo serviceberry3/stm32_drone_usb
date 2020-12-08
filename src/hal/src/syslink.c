@@ -58,8 +58,10 @@ static xSemaphoreHandle syslinkAccess;
 
 static USBPacket usbIn;
 static volatile SyslinkRxState rxState = waitForFirstStart;
-//static volatile uint8_t dataIndex = 0;
+static volatile uint8_t dataIndex = 0;
 static volatile uint8_t cksum[2] = {0};
+
+//static uint8_t data[1];
 
 STATIC_MEM_TASK_ALLOC_STACK_NO_DMA_CCM_SAFE(syslinkTask, SYSLINK_TASK_STACKSIZE);
 
@@ -76,7 +78,7 @@ int usbslkParseIncomingPacket(SyslinkPacket* slp) {
 	    		/*
 	    		0x%02X "
 	    		"0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X "
-	    		"0x%02X 0x%02X 0x%02X 0x%02X\n"*/,
+	    		"0x%02X 0x%02X 0x%02X 0x%02X\n",
 
 
 				usbIn.data[0], usbIn.data[1], usbIn.data[2],
@@ -84,7 +86,7 @@ int usbslkParseIncomingPacket(SyslinkPacket* slp) {
 				usbIn.data[8], usbIn.data[9], usbIn.data[10], usbIn.data[11], usbIn.data[12],
 				usbIn.data[13], usbIn.data[14], usbIn.data[15], usbIn.data[16]);
 
-																		   /*usbIn.data[17],
+																		   usbIn.data[17],
 				usbIn.data[18], usbIn.data[19], usbIn.data[20], usbIn.data[21], usbIn.data[22],
 				usbIn.data[23], usbIn.data[24], usbIn.data[25], usbIn.data[26], usbIn.data[27],
 				usbIn.data[28], usbIn.data[29], usbIn.data[30], usbIn.data[31], usbIn.data[32]);*/
@@ -256,6 +258,13 @@ static void syslinkTask(void *param) {
 	  //DEBUG_PRINT("Getting usb data blocking\n");
 	  usbGetDataBlocking(&usbIn);
 	  //DEBUG_PRINT("USB data read in successfully\n");
+	  //DEBUG_PRINT("Read in data %c, now sending...\n", usbIn.data[0]);
+
+	  //data[0] = 0x30;
+
+	  //usbSendData(1, data);
+	  //DEBUG_PRINT("USB send complete\n");
+
 
 	  //if the packet looks valid
 	  if (!usbslkParseIncomingPacket(&slp)) {
@@ -295,7 +304,8 @@ static void syslinkRouteIncommingPacket(SyslinkPacket *slp) {
 
   //groupType = slp->type & SYSLINK_GROUP_MASK;
 
-  radiolinkSyslinkDispatch(slp);
+  radiolinkSyslinkDispatch(slp); //** MOD: INCL JUST THIS LINE
+
 
   /*
   switch (groupType) {
@@ -321,9 +331,8 @@ static void syslinkRouteIncommingPacket(SyslinkPacket *slp) {
   }*/
 }
 
-/*
- * Public functions
- */
+
+ //Public functions
 //create the infinite syslink task to run on a 'thread'
 void syslinkInit() {
   if (isInit) {
